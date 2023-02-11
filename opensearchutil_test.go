@@ -15,20 +15,20 @@ func TestPrintFieldsForOpensearch(t *testing.T) {
 
 var _ = Describe("GenerateIndexJson", func() {
 	It("Generates an index JSON string", func() {
-		type address struct {
+		type location struct {
 			FullAddress string
-			HouseNumber uint8
+			Confirmed   bool
 		}
-		var person struct {
+		type person struct {
 			Name           string
 			Age            uint8
 			AccountBalance float64
 			IsDead         bool
-			Address        address
+			HomeLoc        location
+			WorkLoc        *location
 			SocialSecurity *string
 		}
-
-		str, err := GenerateIndexJson(person)
+		str, err := GenerateIndexJson(person{})
 		Expect(err).To(BeNil())
 		fmt.Printf("%s\n", str)
 	})
@@ -36,18 +36,20 @@ var _ = Describe("GenerateIndexJson", func() {
 
 var _ = Describe("getMappingProperties", func() {
 	It("Gets field names and their types", func() {
-		type address struct {
+		type location struct {
 			FullAddress string
+			Confirmed   bool
 		}
-		var person struct {
+		type person struct {
 			Name           string
 			Age            uint8
 			AccountBalance float64
 			IsDead         bool
-			Address        address
+			HomeLoc        location
+			WorkLoc        *location
 			SocialSecurity *string
 		}
-		mp, err := getMappingProperties(person)
+		mp, err := getMappingProperties(person{})
 		Expect(err).To(BeNil())
 		Expect(mp).To(ConsistOf(
 			mappingProperty{
@@ -69,6 +71,32 @@ var _ = Describe("getMappingProperties", func() {
 			mappingProperty{
 				FieldName: "social_security",
 				FieldType: "text",
+			},
+			mappingProperty{
+				FieldName: "home_loc",
+				Children: []mappingProperty{
+					{
+						FieldName: "full_address",
+						FieldType: "text",
+					},
+					{
+						FieldName: "confirmed",
+						FieldType: "boolean",
+					},
+				},
+			},
+			mappingProperty{
+				FieldName: "work_loc",
+				Children: []mappingProperty{
+					{
+						FieldName: "full_address",
+						FieldType: "text",
+					},
+					{
+						FieldName: "confirmed",
+						FieldType: "boolean",
+					},
+				},
 			},
 		))
 	})

@@ -3,14 +3,19 @@ package opensearchutil
 import (
 	"bytes"
 	_ "embed"
+	"encoding/json"
 	"github.com/pkg/errors"
 	"reflect"
 	"text/template"
 )
 
+// mappingProperty is a data field of an index. It's either primitive, in which case FieldType != "", or an object, in
+// which case len(Children) > 0.
 type mappingProperty struct {
 	FieldName string
+
 	FieldType string
+	Children  []mappingProperty
 }
 
 type indexTplData struct {
@@ -26,7 +31,13 @@ func GenerateIndexJson(obj interface{}) (string, error) {
 		return "", errors.Wrapf(err, "getMappingProperties")
 	}
 
-	tpl, err := template.New("IndexTpl").Parse(indexTpl)
+	var funcMap template.FuncMap = map[string]interface{}{
+		"notLast": func(index int, len int) bool {
+			return index+1 < len
+		},
+	}
+
+	tpl, err := template.New("IndexTpl").Funcs(funcMap).Parse(indexTpl)
 	if err != nil {
 		return "", errors.Wrapf(err, "parse template")
 	}
@@ -39,29 +50,75 @@ func GenerateIndexJson(obj interface{}) (string, error) {
 		return "", errors.Wrapf(err, "tpl.Execute")
 	}
 
-	return tplResult.String(), nil
+	formattedJson, err := formatJson(tplResult.Bytes())
+	if err != nil {
+		return "", errors.Wrapf(err, "formatJson")
+	}
+
+	return formattedJson, nil
+}
+
+func formatJson(str []byte) (string, error) {
+	var obj map[string]interface{}
+	if err := json.Unmarshal(str, &obj); err != nil {
+		return "", errors.Wrapf(err, "json.Unmarshal")
+	}
+
+	jsonBytes, err := json.MarshalIndent(&obj, "", "   ")
+	if err != nil {
+		return "", errors.Wrapf(err, "json.Marshal")
+	}
+	return string(jsonBytes), nil
 }
 
 func getMappingProperties(obj interface{}) ([]mappingProperty, error) {
 	var mappingProperties []mappingProperty
-	t := reflect.ValueOf(obj).Type()
+	v := reflect.ValueOf(obj)
+	t := v.Type()
 	for i := 0; i < t.NumField(); i++ {
 		kind := t.Field(i).Type.Kind()
-		resolvedKind := kind
 		if kind == reflect.Ptr {
-			resolvedKind = t.Field(i).Type.Elem().Kind()
+			derefKind := t.Field(i).Type.Elem().Kind()
+			if isPrimitive(derefKind) {
+				mappingProperties = append(mappingProperties, mappingProperty{
+					FieldName: toSnakeCase(t.Field(i).Name),
+					FieldType: getOpenSearchType(derefKind),
+				})
+			} else if derefKind == reflect.Struct {
+				nonNilPtrToType := reflect.New(t.Field(i).Type.Elem())
+				actualObj := nonNilPtrToType.Elem().Interface()
+				mp, err := getMappingProperties(actualObj)
+				if err != nil {
+					return nil, errors.Wrapf(err, "nested getMappingProperties")
+				}
+				mappingProperties = append(mappingProperties, mappingProperty{
+					FieldName: toSnakeCase(t.Field(i).Name),
+					Children:  mp,
+				})
+			}
+		} else {
+			if isPrimitive(kind) {
+				mappingProperties = append(mappingProperties, mappingProperty{
+					FieldName: toSnakeCase(t.Field(i).Name),
+					FieldType: getOpenSearchType(kind),
+				})
+			} else if kind == reflect.Struct {
+				mp, err := getMappingProperties(v.Field(i).Interface())
+				if err != nil {
+					return nil, errors.Wrapf(err, "nested getMappingProperties")
+				}
+				mappingProperties = append(mappingProperties, mappingProperty{
+					FieldName: toSnakeCase(t.Field(i).Name),
+					Children:  mp,
+				})
+			}
 		}
-		if isPrimitiveNonPtr(resolvedKind) {
-			mappingProperties = append(mappingProperties, mappingProperty{
-				FieldName: toSnakeCase(t.Field(i).Name),
-				FieldType: getOpenSearchType(resolvedKind),
-			})
-		}
+
 	}
 	return mappingProperties, nil
 }
 
-func isPrimitiveNonPtr(kind reflect.Kind) bool {
+func isPrimitive(kind reflect.Kind) bool {
 	switch kind {
 	case reflect.Bool,
 		reflect.Int,
