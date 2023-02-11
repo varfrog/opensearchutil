@@ -4,27 +4,43 @@ Given an object, makes an OpenSearch index template.
 
 ## Example
 
-This is from a test case:
-
 ```go
-var _ = Describe("GenerateIndexJson", func() {
-	It("Generates an index JSON string", func() {
-		type location struct {
-			FullAddress string
-			Confirmed   bool
-		}
-		type person struct {
-			Name           string
-			Age            uint8
-			AccountBalance float64
-			IsDead         bool
-			HomeLoc        location
-			WorkLoc        *location
-			SocialSecurity *string
-		}
-		str, err := GenerateIndexJson(person{})
-		Expect(err).To(BeNil())
-		Expect(str).To(Equal(`{
+package main
+
+import (
+	_ "embed"
+	"fmt"
+	"github.com/varfrog/opensearchutil"
+	"os"
+)
+
+func main() {
+	type location struct {
+		FullAddress string
+		Confirmed   bool
+	}
+	type person struct {
+		Name           string
+		Age            uint8
+		AccountBalance float64
+		IsDead         bool
+		HomeLoc        location
+		WorkLoc        *location
+		SocialSecurity *string
+	}
+
+	indexJsonStr, err := opensearchutil.GenerateIndexJson(person{})
+	if err != nil {
+		fmt.Printf("GenerateIndexJson: %v", err)
+		os.Exit(1)
+	}
+	fmt.Printf("%s\n", indexJsonStr)
+}
+```
+
+Output:
+```json
+{
    "mappings": {
       "properties": {
          "account_balance": {
@@ -68,7 +84,5 @@ var _ = Describe("GenerateIndexJson", func() {
       "number_of_replicas": 2,
       "number_of_shards": 1
    }
-}`))
-	})
-})
+}
 ```
