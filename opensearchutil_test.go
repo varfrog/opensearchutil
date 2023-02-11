@@ -1,7 +1,6 @@
 package opensearchutil
 
 import (
-	"fmt"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -30,7 +29,51 @@ var _ = Describe("GenerateIndexJson", func() {
 		}
 		str, err := GenerateIndexJson(person{})
 		Expect(err).To(BeNil())
-		fmt.Printf("%s\n", str)
+		Expect(str).To(Equal(`{
+   "mappings": {
+      "properties": {
+         "account_balance": {
+            "type": "float"
+         },
+         "age": {
+            "type": "integer"
+         },
+         "home_loc": {
+            "properties": {
+               "confirmed": {
+                  "type": "boolean"
+               },
+               "full_address": {
+                  "type": "text"
+               }
+            }
+         },
+         "is_dead": {
+            "type": "boolean"
+         },
+         "name": {
+            "type": "text"
+         },
+         "social_security": {
+            "type": "text"
+         },
+         "work_loc": {
+            "properties": {
+               "confirmed": {
+                  "type": "boolean"
+               },
+               "full_address": {
+                  "type": "text"
+               }
+            }
+         }
+      }
+   },
+   "settings": {
+      "number_of_replicas": 2,
+      "number_of_shards": 1
+   }
+}`))
 	})
 })
 
