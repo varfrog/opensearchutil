@@ -1,10 +1,10 @@
 package opensearchutil
 
 import (
-	"testing"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"testing"
+	"time"
 )
 
 func TestPrintFieldsForOpensearch(t *testing.T) {
@@ -13,19 +13,29 @@ func TestPrintFieldsForOpensearch(t *testing.T) {
 }
 
 var _ = Describe("BuildMappingProperties", func() {
-	It("Gets field names and their types", func() {
-		type location struct {
-			FullAddress string
-			Confirmed   bool
-		}
+	It("Works with primitive values and their pointers (ints)", func() {
 		type person struct {
-			Name           string
-			Age            uint8
-			AccountBalance float64
-			IsDead         bool
-			HomeLoc        location
-			WorkLoc        *location
-			SocialSecurity *string
+			Age  uint8
+			Age2 *uint8
+		}
+		mp, err := BuildMappingProperties(person{})
+		Expect(err).To(BeNil())
+		Expect(mp).To(ConsistOf(
+			MappingProperty{
+				FieldName: "age",
+				FieldType: "integer",
+			},
+			MappingProperty{
+				FieldName: "age_2",
+				FieldType: "integer",
+			},
+		))
+	})
+
+	It("Works with primitive values and their pointers (strings)", func() {
+		type person struct {
+			Name  string
+			Name2 *string
 		}
 		mp, err := BuildMappingProperties(person{})
 		Expect(err).To(BeNil())
@@ -35,31 +45,29 @@ var _ = Describe("BuildMappingProperties", func() {
 				FieldType: "text",
 			},
 			MappingProperty{
-				FieldName: "age",
-				FieldType: "integer",
-			},
-			MappingProperty{
-				FieldName: "account_balance",
-				FieldType: "float",
-			},
-			MappingProperty{
-				FieldName: "is_dead",
-				FieldType: "boolean",
-			},
-			MappingProperty{
-				FieldName: "social_security",
+				FieldName: "name_2",
 				FieldType: "text",
 			},
+		))
+	})
+
+	It("Works with custom structs and their pointers", func() {
+		type location struct {
+			FullAddress string
+		}
+		type person struct {
+			HomeLoc location
+			WorkLoc *location
+		}
+		mp, err := BuildMappingProperties(person{})
+		Expect(err).To(BeNil())
+		Expect(mp).To(ConsistOf(
 			MappingProperty{
 				FieldName: "home_loc",
 				Children: []MappingProperty{
 					{
 						FieldName: "full_address",
 						FieldType: "text",
-					},
-					{
-						FieldName: "confirmed",
-						FieldType: "boolean",
 					},
 				},
 			},
@@ -70,13 +78,90 @@ var _ = Describe("BuildMappingProperties", func() {
 						FieldName: "full_address",
 						FieldType: "text",
 					},
-					{
-						FieldName: "confirmed",
-						FieldType: "boolean",
-					},
 				},
 			},
 		))
+	})
+
+	It("Sets the specified type or falls back to default for string", func() {
+		type person struct {
+			Name  string
+			Email string `opensearch:"type:keyword"`
+		}
+		mp, err := BuildMappingProperties(person{})
+		Expect(err).To(BeNil())
+		Expect(mp).To(ConsistOf(
+			MappingProperty{
+				FieldName: "name",
+				FieldType: "text",
+			},
+			MappingProperty{
+				FieldName: "email",
+				FieldType: "keyword",
+			},
+		))
+	})
+
+	It("Sets the specified type for time.Time", func() {
+		type person struct {
+			DOB time.Time `opensearch:"type:basic_date_time_no_millis"`
+		}
+		mp, err := BuildMappingProperties(person{})
+		Expect(err).To(BeNil())
+		Expect(mp).To(ConsistOf(
+			MappingProperty{
+				FieldName: "dob",
+				FieldType: "basic_date_time_no_millis",
+			},
+		))
+	})
+
+	It("Does not exceed default MaxDepth when there is recursion", func() {
+		type location struct {
+			loc *location
+		}
+		mp, err := BuildMappingProperties(location{})
+
+		Expect(err).To(BeNil())
+		Expect(mp).To(Equal([]MappingProperty{
+			{
+				FieldName: "loc",
+				Children: []MappingProperty{
+					{
+						FieldName: "loc",
+					},
+				},
+			},
+		}))
+	})
+
+	It("Does not exceed the given MaxDepth when there is recursion", func() {
+		type location struct {
+			loc *location
+		}
+		mp, err := BuildMappingProperties(location{}, WithMaxDepth(4))
+
+		Expect(err).To(BeNil())
+		Expect(mp).To(Equal([]MappingProperty{
+			{
+				FieldName: "loc",
+				Children: []MappingProperty{
+					{
+						FieldName: "loc",
+						Children: []MappingProperty{
+							{
+								FieldName: "loc",
+								Children: []MappingProperty{
+									{
+										FieldName: "loc",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}))
 	})
 })
 
