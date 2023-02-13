@@ -35,7 +35,26 @@ type MappingProperty struct {
 	Children  []MappingProperty
 }
 
-func BuildMappingProperties(obj interface{}) ([]MappingProperty, error) {
+func BuildMappingProperties(obj interface{}, options ...Option) ([]MappingProperty, error) {
+	opts := optionsContainer{
+		maxDepth: DefaultMaxDepth,
+	}
+	for _, o := range options {
+		o.apply(&opts)
+	}
+
+	mps, err := doBuildMappingProperties(obj, 1, &opts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "doBuildMappingProperties")
+	}
+	return mps, nil
+}
+
+func doBuildMappingProperties(
+	obj interface{},
+	nthLevel uint8,
+	optsContainer *optionsContainer,
+) ([]MappingProperty, error) {
 	var mappingProperties []MappingProperty
 	v := reflect.ValueOf(obj)
 	t := v.Type()
@@ -62,13 +81,17 @@ func BuildMappingProperties(obj interface{}) ([]MappingProperty, error) {
 					FieldType: fieldTypeOverride,
 				})
 			} else {
-				mp, err := BuildMappingProperties(resolvedField.value.Interface())
-				if err != nil {
-					return nil, errors.Wrapf(err, "nested BuildMappingProperties")
+				var children []MappingProperty
+				if nthLevel+1 <= optsContainer.maxDepth {
+					mp, err := doBuildMappingProperties(resolvedField.value.Interface(), nthLevel+1, optsContainer)
+					if err != nil {
+						return nil, errors.Wrapf(err, "nested BuildMappingProperties")
+					}
+					children = mp
 				}
 				mappingProperties = append(mappingProperties, MappingProperty{
 					FieldName: toSnakeCase(tField.Name),
-					Children:  mp,
+					Children:  children,
 				})
 			}
 		}

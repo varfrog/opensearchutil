@@ -115,6 +115,54 @@ var _ = Describe("BuildMappingProperties", func() {
 			},
 		))
 	})
+
+	It("Does not exceed default MaxDepth when there is recursion", func() {
+		type location struct {
+			loc *location
+		}
+		mp, err := BuildMappingProperties(location{})
+
+		Expect(err).To(BeNil())
+		Expect(mp).To(Equal([]MappingProperty{
+			{
+				FieldName: "loc",
+				Children: []MappingProperty{
+					{
+						FieldName: "loc",
+					},
+				},
+			},
+		}))
+	})
+
+	It("Does not exceed the given MaxDepth when there is recursion", func() {
+		type location struct {
+			loc *location
+		}
+		mp, err := BuildMappingProperties(location{}, WithMaxDepth(4))
+
+		Expect(err).To(BeNil())
+		Expect(mp).To(Equal([]MappingProperty{
+			{
+				FieldName: "loc",
+				Children: []MappingProperty{
+					{
+						FieldName: "loc",
+						Children: []MappingProperty{
+							{
+								FieldName: "loc",
+								Children: []MappingProperty{
+									{
+										FieldName: "loc",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}))
+	})
 })
 
 var _ = Describe("GenerateIndexJson", func() {
