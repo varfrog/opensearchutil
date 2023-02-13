@@ -12,72 +12,7 @@ func TestPrintFieldsForOpensearch(t *testing.T) {
 	RunSpecs(t, "PrintFieldsForOpensearch Suite")
 }
 
-var _ = Describe("GenerateIndexJson", func() {
-	It("Generates an index JSON string", func() {
-		type location struct {
-			FullAddress string
-			Confirmed   bool
-		}
-		type person struct {
-			Name           string
-			Age            uint8
-			AccountBalance float64
-			IsDead         bool
-			HomeLoc        location
-			WorkLoc        *location
-			SocialSecurity *string
-		}
-		str, err := GenerateIndexJson(person{})
-		Expect(err).To(BeNil())
-		Expect(str).To(Equal(`{
-   "mappings": {
-      "properties": {
-         "account_balance": {
-            "type": "float"
-         },
-         "age": {
-            "type": "integer"
-         },
-         "home_loc": {
-            "properties": {
-               "confirmed": {
-                  "type": "boolean"
-               },
-               "full_address": {
-                  "type": "text"
-               }
-            }
-         },
-         "is_dead": {
-            "type": "boolean"
-         },
-         "name": {
-            "type": "text"
-         },
-         "social_security": {
-            "type": "text"
-         },
-         "work_loc": {
-            "properties": {
-               "confirmed": {
-                  "type": "boolean"
-               },
-               "full_address": {
-                  "type": "text"
-               }
-            }
-         }
-      }
-   },
-   "settings": {
-      "number_of_replicas": 2,
-      "number_of_shards": 1
-   }
-}`))
-	})
-})
-
-var _ = Describe("getMappingProperties", func() {
+var _ = Describe("BuildMappingProperties", func() {
 	It("Gets field names and their types", func() {
 		type location struct {
 			FullAddress string
@@ -92,32 +27,32 @@ var _ = Describe("getMappingProperties", func() {
 			WorkLoc        *location
 			SocialSecurity *string
 		}
-		mp, err := getMappingProperties(person{})
+		mp, err := BuildMappingProperties(person{})
 		Expect(err).To(BeNil())
 		Expect(mp).To(ConsistOf(
-			mappingProperty{
+			MappingProperty{
 				FieldName: "name",
 				FieldType: "text",
 			},
-			mappingProperty{
+			MappingProperty{
 				FieldName: "age",
 				FieldType: "integer",
 			},
-			mappingProperty{
+			MappingProperty{
 				FieldName: "account_balance",
 				FieldType: "float",
 			},
-			mappingProperty{
+			MappingProperty{
 				FieldName: "is_dead",
 				FieldType: "boolean",
 			},
-			mappingProperty{
+			MappingProperty{
 				FieldName: "social_security",
 				FieldType: "text",
 			},
-			mappingProperty{
+			MappingProperty{
 				FieldName: "home_loc",
-				Children: []mappingProperty{
+				Children: []MappingProperty{
 					{
 						FieldName: "full_address",
 						FieldType: "text",
@@ -128,9 +63,9 @@ var _ = Describe("getMappingProperties", func() {
 					},
 				},
 			},
-			mappingProperty{
+			MappingProperty{
 				FieldName: "work_loc",
-				Children: []mappingProperty{
+				Children: []MappingProperty{
 					{
 						FieldName: "full_address",
 						FieldType: "text",
@@ -142,6 +77,91 @@ var _ = Describe("getMappingProperties", func() {
 				},
 			},
 		))
+	})
+})
+
+var _ = Describe("GenerateIndexJson", func() {
+	It("Generates an index JSON string", func() {
+		mappingProperties := []MappingProperty{
+			{
+				FieldName: "id",
+				FieldType: "integer",
+				Children:  nil,
+			},
+			{
+				FieldName: "price",
+				FieldType: "float",
+			},
+			{
+				FieldName: "location",
+				Children: []MappingProperty{
+					{
+						FieldName: "full_address",
+						FieldType: "text",
+					},
+					{
+						FieldName: "confirmed",
+						FieldType: "boolean",
+					},
+				},
+			},
+			{
+				FieldName: "company",
+				Children: []MappingProperty{
+					{
+						FieldName: "name",
+						FieldType: "text",
+					},
+					{
+						FieldName: "parent_company",
+						Children: []MappingProperty{
+							{
+								FieldName: "name",
+								FieldType: "text",
+							},
+						},
+					},
+				},
+			},
+		}
+		resultJson, err := GenerateIndexJson(mappingProperties)
+		Expect(err).To(BeNil())
+		Expect(resultJson).To(Equal([]byte(`{
+   "mappings": {
+      "properties": {
+         "company": {
+            "properties": {
+               "name": {
+                  "type": "text"
+               },
+               "parent_company": {
+                  "properties": {
+                     "name": {
+                        "type": "text"
+                     }
+                  }
+               }
+            }
+         },
+         "id": {
+            "type": "integer"
+         },
+         "location": {
+            "properties": {
+               "confirmed": {
+                  "type": "boolean"
+               },
+               "full_address": {
+                  "type": "text"
+               }
+            }
+         },
+         "price": {
+            "type": "float"
+         }
+      }
+   }
+}`)))
 	})
 })
 

@@ -29,60 +29,64 @@ func main() {
 		SocialSecurity *string
 	}
 
-	indexJsonStr, err := opensearchutil.GenerateIndexJson(person{})
+	mappingProperties, err := opensearchutil.BuildMappingProperties(person{})
+	if err != nil {
+		fmt.Printf("opensearchutil.BuildMappingProperties: %v", err)
+		os.Exit(1)
+	}
+
+	indexJson, err := opensearchutil.GenerateIndexJson(mappingProperties)
 	if err != nil {
 		fmt.Printf("GenerateIndexJson: %v", err)
 		os.Exit(1)
 	}
-	fmt.Printf("%s\n", indexJsonStr)
+	fmt.Printf("%s\n", string(indexJson))
 }
 ```
 
 Output:
 ```json
 {
-   "mappings": {
-      "properties": {
-         "account_balance": {
-            "type": "float"
-         },
-         "age": {
-            "type": "integer"
-         },
-         "home_loc": {
-            "properties": {
-               "confirmed": {
-                  "type": "boolean"
-               },
-               "full_address": {
-                  "type": "text"
-               }
-            }
-         },
-         "is_dead": {
+  "mappings": {
+    "properties": {
+      "account_balance": {
+        "type": "float"
+      },
+      "age": {
+        "type": "integer"
+      },
+      "home_loc": {
+        "properties": {
+          "confirmed": {
             "type": "boolean"
-         },
-         "name": {
+          },
+          "full_address": {
             "type": "text"
-         },
-         "social_security": {
+          }
+        }
+      },
+      "is_dead": {
+        "type": "boolean"
+      },
+      "name": {
+        "type": "text"
+      },
+      "social_security": {
+        "type": "text"
+      },
+      "work_loc": {
+        "properties": {
+          "confirmed": {
+            "type": "boolean"
+          },
+          "full_address": {
             "type": "text"
-         },
-         "work_loc": {
-            "properties": {
-               "confirmed": {
-                  "type": "boolean"
-               },
-               "full_address": {
-                  "type": "text"
-               }
-            }
-         }
+          }
+        }
       }
-   },
-   "settings": {
-      "number_of_replicas": 2,
-      "number_of_shards": 1
-   }
+    }
+  }
 }
 ```
+
+The resulting JSON contents is then used in a request to the [Create index API request](https://opensearch.org/docs/1.0/opensearch/rest-api/create-index/). Also specify "settings" and "aliases" that suit your needs.
