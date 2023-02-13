@@ -6,11 +6,23 @@ import (
 	"encoding/json"
 	"github.com/pkg/errors"
 	"reflect"
+	"strings"
 	"text/template"
+)
+
+const (
+	tagKey     = "opensearch"
+	tagKeyType = "type"
 )
 
 //go:embed index.gotmpl
 var indexTmpl string
+
+type fieldWrapper struct {
+	kind        reflect.Kind
+	isPrimitive bool
+	value       reflect.Value
+}
 
 // MappingProperty corresponds to mappings.properties of a mapping JSON. See
 // https://opensearch.org/docs/1.3/opensearch/mappings/#explicit-mapping.
@@ -28,46 +40,94 @@ func BuildMappingProperties(obj interface{}) ([]MappingProperty, error) {
 	v := reflect.ValueOf(obj)
 	t := v.Type()
 	for i := 0; i < t.NumField(); i++ {
-		kind := t.Field(i).Type.Kind()
-		if kind == reflect.Ptr {
-			derefKind := t.Field(i).Type.Elem().Kind()
-			if isPrimitive(derefKind) {
-				mappingProperties = append(mappingProperties, MappingProperty{
-					FieldName: toSnakeCase(t.Field(i).Name),
-					FieldType: getOpenSearchType(derefKind),
-				})
-			} else if derefKind == reflect.Struct {
-				nonNilPtrToType := reflect.New(t.Field(i).Type.Elem())
-				actualObj := nonNilPtrToType.Elem().Interface()
-				mp, err := BuildMappingProperties(actualObj)
-				if err != nil {
-					return nil, errors.Wrapf(err, "nested BuildMappingProperties")
-				}
-				mappingProperties = append(mappingProperties, MappingProperty{
-					FieldName: toSnakeCase(t.Field(i).Name),
-					Children:  mp,
-				})
+		tField := t.Field(i)
+		resolvedField := resolveField(tField, v.Field(i))
+		fieldTypeOverride := getFieldTypeOverride(tField)
+
+		if resolvedField.isPrimitive {
+			var fieldType string
+			if fieldTypeOverride != "" {
+				fieldType = fieldTypeOverride
+			} else {
+				fieldType = getDefaultOSTypeFromPrimitiveKind(resolvedField.kind)
 			}
-		} else {
-			if isPrimitive(kind) {
+			mappingProperties = append(mappingProperties, MappingProperty{
+				FieldName: toSnakeCase(tField.Name),
+				FieldType: fieldType,
+			})
+		} else if resolvedField.kind == reflect.Struct {
+			if fieldTypeOverride != "" {
 				mappingProperties = append(mappingProperties, MappingProperty{
-					FieldName: toSnakeCase(t.Field(i).Name),
-					FieldType: getOpenSearchType(kind),
+					FieldName: toSnakeCase(tField.Name),
+					FieldType: fieldTypeOverride,
 				})
-			} else if kind == reflect.Struct {
-				mp, err := BuildMappingProperties(v.Field(i).Interface())
+			} else {
+				mp, err := BuildMappingProperties(resolvedField.value.Interface())
 				if err != nil {
 					return nil, errors.Wrapf(err, "nested BuildMappingProperties")
 				}
 				mappingProperties = append(mappingProperties, MappingProperty{
-					FieldName: toSnakeCase(t.Field(i).Name),
+					FieldName: toSnakeCase(tField.Name),
 					Children:  mp,
 				})
 			}
 		}
-
 	}
 	return mappingProperties, nil
+}
+
+// getFieldTypeOverride returns a type of the given field if it is overriden by a tag,
+// returns "" if it is not overriden.
+func getFieldTypeOverride(structField reflect.StructField) string {
+	if tag := structField.Tag.Get(tagKey); tag != "" {
+		for _, kvs := range strings.Split(tag, ",") {
+			kv := strings.Split(kvs, ":")
+			if len(kv) == 2 {
+				if kv[0] == tagKeyType {
+					return kv[1]
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// resolveField returns the kind of the type. If it's a pointer, it returns the referenced type's kind.
+func resolveField(structField reflect.StructField, value reflect.Value) fieldWrapper {
+	var kind reflect.Kind
+	var val reflect.Value
+	if structField.Type.Kind() == reflect.Ptr {
+		kind = structField.Type.Elem().Kind()
+		val = reflect.New(structField.Type.Elem()).Elem()
+	} else {
+		kind = structField.Type.Kind()
+		val = value
+	}
+
+	var primitive bool
+	switch kind {
+	case reflect.Bool,
+		reflect.Int,
+		reflect.Int8,
+		reflect.Int16,
+		reflect.Int32,
+		reflect.Int64,
+		reflect.Uint,
+		reflect.Uint8,
+		reflect.Uint16,
+		reflect.Uint32,
+		reflect.Uint64,
+		reflect.Float32,
+		reflect.Float64,
+		reflect.String:
+		primitive = true
+	}
+
+	return fieldWrapper{
+		kind:        kind,
+		isPrimitive: primitive,
+		value:       val,
+	}
 }
 
 func GenerateIndexJson(mappingProperties []MappingProperty) ([]byte, error) {
@@ -115,29 +175,7 @@ func formatJson(str []byte) ([]byte, error) {
 	return jsonBytes, nil
 }
 
-func isPrimitive(kind reflect.Kind) bool {
-	switch kind {
-	case reflect.Bool,
-		reflect.Int,
-		reflect.Int8,
-		reflect.Int16,
-		reflect.Int32,
-		reflect.Int64,
-		reflect.Uint,
-		reflect.Uint8,
-		reflect.Uint16,
-		reflect.Uint32,
-		reflect.Uint64,
-		reflect.Float32,
-		reflect.Float64,
-		reflect.String:
-		return true
-	default:
-		return false
-	}
-}
-
-func getOpenSearchType(kind reflect.Kind) string {
+func getDefaultOSTypeFromPrimitiveKind(kind reflect.Kind) string {
 	switch kind {
 	case reflect.Bool:
 		return "boolean"
@@ -156,7 +194,7 @@ func getOpenSearchType(kind reflect.Kind) string {
 		reflect.Float64:
 		return "float"
 	case reflect.String:
-		return "text" // can also be keyword, token_count
+		return "text"
 	default:
 		return ""
 	}
