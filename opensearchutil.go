@@ -19,9 +19,10 @@ const (
 var indexTmpl string
 
 type fieldWrapper struct {
+	field       reflect.StructField
 	kind        reflect.Kind
-	isPrimitive bool
 	value       reflect.Value
+	isPrimitive bool
 }
 
 // MappingProperty corresponds to mappings.properties of a mapping JSON. See
@@ -61,42 +62,45 @@ func doBuildMappingProperties(
 	for i := 0; i < t.NumField(); i++ {
 		tField := t.Field(i)
 		resolvedField := resolveField(tField, v.Field(i))
-		fieldTypeOverride := getFieldTypeOverride(tField)
-
-		if resolvedField.isPrimitive {
-			var fieldType string
-			if fieldTypeOverride != "" {
-				fieldType = fieldTypeOverride
-			} else {
-				fieldType = getDefaultOSTypeFromPrimitiveKind(resolvedField.kind)
-			}
+		fieldType, err := resolveFieldType(resolvedField)
+		if err != nil {
+			return nil, errors.Wrapf(err, "resolveFieldType")
+		}
+		if fieldType != "" {
 			mappingProperties = append(mappingProperties, MappingProperty{
 				FieldName: toSnakeCase(tField.Name),
 				FieldType: fieldType,
 			})
-		} else if resolvedField.kind == reflect.Struct {
-			if fieldTypeOverride != "" {
-				mappingProperties = append(mappingProperties, MappingProperty{
-					FieldName: toSnakeCase(tField.Name),
-					FieldType: fieldTypeOverride,
-				})
-			} else {
-				var children []MappingProperty
-				if nthLevel+1 <= optsContainer.maxDepth {
-					mp, err := doBuildMappingProperties(resolvedField.value.Interface(), nthLevel+1, optsContainer)
-					if err != nil {
-						return nil, errors.Wrapf(err, "nested BuildMappingProperties")
-					}
-					children = mp
-				}
-				mappingProperties = append(mappingProperties, MappingProperty{
-					FieldName: toSnakeCase(tField.Name),
-					Children:  children,
-				})
+			continue
+		}
+
+		if resolvedField.kind == reflect.Struct && nthLevel+1 <= optsContainer.maxDepth {
+			children, err := doBuildMappingProperties(resolvedField.value.Interface(), nthLevel+1, optsContainer)
+			if err != nil {
+				return nil, errors.Wrapf(err, "nested BuildMappingProperties")
 			}
+			mappingProperties = append(mappingProperties, MappingProperty{
+				FieldName: toSnakeCase(tField.Name),
+				Children:  children,
+			})
+			continue
 		}
 	}
 	return mappingProperties, nil
+}
+
+func resolveFieldType(field fieldWrapper) (string, error) {
+	fieldTypeOverride := getFieldTypeOverride(field.field)
+	if fieldTypeOverride != "" {
+		return fieldTypeOverride, nil
+	}
+	if field.isPrimitive {
+		return getDefaultOSTypeFromPrimitiveKind(field.kind), nil
+	}
+	if field.kind == reflect.Struct {
+		// todo: if it's a time.Time, return opensaerch type for date-time
+	}
+	return "", nil
 }
 
 // getFieldTypeOverride returns a type of the given field if it is overriden by a tag,
@@ -115,7 +119,8 @@ func getFieldTypeOverride(structField reflect.StructField) string {
 	return ""
 }
 
-// resolveField returns the kind of the type. If it's a pointer, it returns the referenced type's kind.
+// resolveField returns a wrapper object for the given field. If the field is a pointer, it returns a wrapper
+// for the dereferences field, since we treat both pointer and value fields the same.
 func resolveField(structField reflect.StructField, value reflect.Value) fieldWrapper {
 	var kind reflect.Kind
 	var val reflect.Value
@@ -147,9 +152,10 @@ func resolveField(structField reflect.StructField, value reflect.Value) fieldWra
 	}
 
 	return fieldWrapper{
+		field:       structField,
 		kind:        kind,
-		isPrimitive: primitive,
 		value:       val,
+		isPrimitive: primitive,
 	}
 }
 
