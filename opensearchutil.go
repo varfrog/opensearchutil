@@ -8,11 +8,14 @@ import (
 	"reflect"
 	"strings"
 	"text/template"
+	"time"
 )
 
 const (
 	tagKey     = "opensearch"
 	tagKeyType = "type"
+
+	defaultTimeType = "basic_date_time"
 )
 
 //go:embed index.gotmpl
@@ -98,7 +101,10 @@ func resolveFieldType(field fieldWrapper) (string, error) {
 		return getDefaultOSTypeFromPrimitiveKind(field.kind), nil
 	}
 	if field.kind == reflect.Struct {
-		// todo: if it's a time.Time, return opensaerch type for date-time
+		switch field.value.Interface().(type) {
+		case time.Time:
+			return defaultTimeType, nil
+		}
 	}
 	return "", nil
 }

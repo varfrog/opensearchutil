@@ -103,7 +103,6 @@ var _ = Describe("BuildMappingProperties", func() {
 	})
 
 	It("Sets the specified type for time.Time or falls back to the default for time.Time", func() {
-		Skip("cunt") // todo unskip
 		type person struct {
 			Created time.Time
 			DOB     time.Time `opensearch:"type:basic_date"`
@@ -113,7 +112,7 @@ var _ = Describe("BuildMappingProperties", func() {
 		Expect(mp).To(ConsistOf(
 			MappingProperty{
 				FieldName: "created",
-				FieldType: "basic_date_time",
+				FieldType: defaultTimeType,
 			},
 			MappingProperty{
 				FieldName: "dob",
