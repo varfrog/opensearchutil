@@ -1,11 +1,12 @@
 package opensearchutil
 
 import (
+	"fmt"
 	"github.com/onsi/gomega"
 	"testing"
 )
 
-func TestIndexGenerator_GenerateIndexJson(t *testing.T) {
+func TestIndexGenerator_GenerateIndexJson_buildsATree(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	mappingProperties := []MappingProperty{
@@ -85,6 +86,32 @@ func TestIndexGenerator_GenerateIndexJson(t *testing.T) {
          },
          "price": {
             "type": "float"
+         }
+      }
+   }
+}`))
+}
+
+func TestIndexGenerator_GenerateIndexJson_addsFormatIfSpecified(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	mappingProperties := []MappingProperty{
+		{
+			FieldName:   "created_at",
+			FieldType:   "date",
+			FieldFormat: makePtr("basic_time"),
+		},
+	}
+
+	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties)
+	g.Expect(err).To(gomega.BeNil())
+	fmt.Println(string(resultJson))
+	g.Expect(string(resultJson)).To(gomega.Equal(`{
+   "mappings": {
+      "properties": {
+         "created_at": {
+            "format": "basic_time",
+            "type": "date"
          }
       }
    }

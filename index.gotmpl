@@ -1,7 +1,14 @@
 {{define "mapping_property"}}
   "{{.FieldName}}": {
+      {{$fieldsAdded := false}}
       {{if .FieldType}}
         "type": "{{.FieldType}}"
+        {{$fieldsAdded = true}}
+      {{end}}
+      {{if .FieldFormat}}
+          {{if $fieldsAdded}},{{end}}
+          "format": "{{.FieldFormat}}"
+          {{$fieldsAdded = true}}
       {{end}}
       {{if .Children}}
           "properties": {

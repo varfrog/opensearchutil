@@ -3,7 +3,6 @@ package opensearchutil
 import (
 	"github.com/pkg/errors"
 	"reflect"
-	"strings"
 	"time"
 )
 
@@ -53,9 +52,15 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 	for i := 0; i < t.NumField(); i++ {
 		tField := t.Field(i)
 		resolvedField := b.resolveField(tField, v.Field(i))
+
 		fieldType, err := b.resolveFieldType(resolvedField)
 		if err != nil {
 			return nil, errors.Wrapf(err, "resolveFieldType")
+		}
+
+		fieldFormat, err := b.resolveFieldFormat(resolvedField)
+		if err != nil {
+			return nil, errors.Wrapf(err, "resolveFieldFormat")
 		}
 
 		transformedFieldName, err := b.optionContainer.fieldNameTransformer.TransformFieldName(tField.Name)
@@ -65,8 +70,9 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 
 		if fieldType != "" {
 			mappingProperties = append(mappingProperties, MappingProperty{
-				FieldName: transformedFieldName,
-				FieldType: fieldType,
+				FieldName:   transformedFieldName,
+				FieldType:   fieldType,
+				FieldFormat: fieldFormat,
 			})
 			continue
 		}
@@ -77,8 +83,9 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 				return nil, errors.Wrapf(err, "nested b.doBuildMappingProperties")
 			}
 			mappingProperties = append(mappingProperties, MappingProperty{
-				FieldName: transformedFieldName,
-				Children:  children,
+				FieldName:   transformedFieldName,
+				Children:    children,
+				FieldFormat: fieldFormat,
 			})
 			continue
 		}
@@ -87,7 +94,7 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 }
 
 func (b *MappingPropertiesBuilder) resolveFieldType(field fieldWrapper) (string, error) {
-	fieldTypeOverride := b.getFieldTypeOverride(field.field)
+	fieldTypeOverride := getTagOptionValue(field.field, tagKey, tagOptionType)
 	if fieldTypeOverride != "" {
 		return fieldTypeOverride, nil
 	}
@@ -97,26 +104,24 @@ func (b *MappingPropertiesBuilder) resolveFieldType(field fieldWrapper) (string,
 	if field.kind == reflect.Struct {
 		switch field.value.Interface().(type) {
 		case time.Time:
-			return defaultTimeType, nil
+			return "date", nil
 		}
 	}
 	return "", nil
 }
 
-// getFieldTypeOverride returns a type of the given field if it is overriden by a tag,
-// returns "" if it is not overriden.
-func (b *MappingPropertiesBuilder) getFieldTypeOverride(structField reflect.StructField) string {
-	if tag := structField.Tag.Get(tagKey); tag != "" {
-		for _, kvs := range strings.Split(tag, ",") {
-			kv := strings.Split(kvs, ":")
-			if len(kv) == 2 {
-				if kv[0] == tagKeyType {
-					return kv[1]
-				}
-			}
+func (b *MappingPropertiesBuilder) resolveFieldFormat(field fieldWrapper) (*string, error) {
+	fieldFormatOverride := getTagOptionValue(field.field, tagKey, tagOptionFormat)
+	if fieldFormatOverride != "" {
+		return &fieldFormatOverride, nil
+	}
+	if field.kind == reflect.Struct {
+		switch field.value.Interface().(type) {
+		case time.Time:
+			return makePtr(DefaultTimeFormat), nil
 		}
 	}
-	return ""
+	return nil, nil
 }
 
 // resolveField returns a wrapper object for the given field. If the field is a pointer, it returns a wrapper
