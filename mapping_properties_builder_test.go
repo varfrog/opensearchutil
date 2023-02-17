@@ -108,12 +108,12 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_SetsSpecifiedTypeOrFall
 	))
 }
 
-func TestMappingPropertiesBuilder_BuildMappingProperties_SetsDefaultForTimeType(t *testing.T) {
+func TestMappingPropertiesBuilder_BuildMappingProperties_SetsDefaultFormatForTimeType(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	type person struct {
 		Created time.Time
-		DOB     time.Time `opensearch:"type:basic_date"`
+		DOB     time.Time `opensearch:"format:basic_date"`
 	}
 
 	builder := NewMappingPropertiesBuilder()
@@ -121,12 +121,14 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_SetsDefaultForTimeType(
 	g.Expect(err).To(gomega.BeNil())
 	g.Expect(mps).To(gomega.ConsistOf(
 		MappingProperty{
-			FieldName: "created",
-			FieldType: defaultTimeType,
+			FieldName:   "created",
+			FieldType:   "date",
+			FieldFormat: makePtr(DefaultTimeFormat),
 		},
 		MappingProperty{
-			FieldName: "dob",
-			FieldType: "basic_date",
+			FieldName:   "dob",
+			FieldType:   "date",
+			FieldFormat: makePtr("basic_date"),
 		},
 	))
 }
