@@ -21,6 +21,8 @@ func main() {
 	}
 	type person struct {
 		Name           string
+		Email          string `opensearch:"type:keyword"`
+		DOB            time.Time
 		Age            uint8
 		AccountBalance float64
 		IsDead         bool
@@ -29,13 +31,16 @@ func main() {
 		SocialSecurity *string
 	}
 
-	mappingProperties, err := opensearchutil.BuildMappingProperties(person{})
+	builder := opensearchutil.NewMappingPropertiesBuilder()
+	jsonGenerator := opensearchutil.NewIndexGenerator()
+
+	mappingProperties, err := builder.BuildMappingProperties(person{})
 	if err != nil {
-		fmt.Printf("opensearchutil.BuildMappingProperties: %v", err)
+		fmt.Printf("BuildMappingProperties: %v", err)
 		os.Exit(1)
 	}
 
-	indexJson, err := opensearchutil.GenerateIndexJson(mappingProperties)
+	indexJson, err := jsonGenerator.GenerateIndexJson(mappingProperties)
 	if err != nil {
 		fmt.Printf("GenerateIndexJson: %v", err)
 		os.Exit(1)
@@ -54,6 +59,12 @@ Output:
       },
       "age": {
         "type": "integer"
+      },
+      "dob": {
+        "type": "basic_date_time"
+      },
+      "email": {
+        "type": "keyword"
       },
       "home_loc": {
         "properties": {
