@@ -5,12 +5,12 @@ import (
 )
 
 const (
+	DefaultTimeFormat = "basic_date_time"
+	DefaultMaxDepth   = 2
+
 	tagKey          = "opensearch"
 	tagOptionType   = "type"
 	tagOptionFormat = "format"
-
-	DefaultTimeFormat = "basic_date_time"
-	DefaultMaxDepth   = 2
 )
 
 // MappingProperty corresponds to mappings.properties of a mapping JSON. See

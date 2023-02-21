@@ -1,7 +1,6 @@
 package opensearchutil
 
 import (
-	"fmt"
 	"github.com/onsi/gomega"
 	"testing"
 )
@@ -105,7 +104,6 @@ func TestIndexGenerator_GenerateIndexJson_addsFormatIfSpecified(t *testing.T) {
 
 	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties)
 	g.Expect(err).To(gomega.BeNil())
-	fmt.Println(string(resultJson))
 	g.Expect(string(resultJson)).To(gomega.Equal(`{
    "mappings": {
       "properties": {
