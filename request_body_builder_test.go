@@ -3,9 +3,10 @@ package opensearchutil
 import (
 	"github.com/onsi/gomega"
 	"testing"
+	"time"
 )
 
-func TestRequestBodyBuilder_BuildIndexBody(t *testing.T) {
+func TestRequestBodyBuilder_BuildIndexBody_multipleObjectsWithPrimitiveFieldsAndSimpleStructField(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 	builder := NewRequestBodyBuilder()
 
@@ -47,6 +48,35 @@ func TestRequestBodyBuilder_BuildIndexBody(t *testing.T) {
 {"id":"680","name":"Ann","age":40,"address":{"postal_code":10000}}
 {"index":{"_index":"people","_id":"730"}}
 {"id":"730","name":"Bob","age":38,"address":{"postal_code":35000}}
+`
+	g.Expect(resBody).To(gomega.Equal(expBody))
+}
+
+func TestRequestBodyBuilder_BuildIndexBody_timeField(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+	builder := NewRequestBodyBuilder()
+
+	type person struct {
+		ID   string                    `json:"id"`
+		Name string                    `json:"name"`
+		DOB  TimeBasicDateTimeNoMillis `json:"dob"`
+	}
+
+	resBody, err := builder.BuildIndexBody([]ObjectWrapper{
+		{
+			ID:    "1",
+			Index: "people",
+			Object: person{
+				ID:   "1",
+				Name: "Ann",
+				DOB:  TimeBasicDateTimeNoMillis(time.Date(2019, 3, 23, 21, 34, 46, 0, time.UTC)),
+			},
+		},
+	})
+	g.Expect(err).To(gomega.BeNil())
+
+	expBody := `{"index":{"_index":"people","_id":"1"}}
+{"id":"1","name":"Ann","dob":"20190323T213446+00:00"}
 `
 	g.Expect(resBody).To(gomega.Equal(expBody))
 }
