@@ -25,7 +25,7 @@ func main() {
 	type person struct {
 		Name           string
 		Email          string `opensearch:"type:keyword"`
-		DOB            time.Time
+		DOB            opensearchutil.TimeBasicDateTimeNoMillis
 		Age            uint8
 		AccountBalance float64
 		IsDead         bool
@@ -64,7 +64,8 @@ Output:
         "type": "integer"
       },
       "dob": {
-        "type": "basic_date_time"
+        "format": "basic_date_time_no_millis",
+        "type": "date"
       },
       "email": {
         "type": "keyword"
@@ -119,6 +120,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -139,36 +141,42 @@ func main() {
 		PostalCode uint32 `json:"postal_code"`
 	}
 	type person struct {
-		ID      string  `json:"id" opensearch:"id=id"`
-		Name    string  `json:"name"`
-		Age     uint8   `json:"age"`
-		Address address `json:"address"`
+		ID      string                       `json:"id"      opensearch:"type=keyword"`
+		Name    string                       `json:"name"`
+		Age     uint8                        `json:"age"`
+		DOB     opensearchutil.TimeBasicDate `json:"dob"`
+		Address address                      `json:"address"`
 	}
 
 	ann := person{
 		ID:      "680",
 		Name:    "Ann",
+		DOB:     opensearchutil.TimeBasicDate(time.Date(1983, 01, 01, 0, 0, 0, 0, time.UTC)),
 		Age:     40,
 		Address: address{PostalCode: 10000},
 	}
 	bob := person{
 		ID:      "720",
 		Name:    "Bob",
+		DOB:     opensearchutil.TimeBasicDate(time.Date(1985, 01, 01, 0, 0, 0, 0, time.UTC)),
 		Age:     38,
 		Address: address{PostalCode: 38000},
 	}
 	carl := person{
 		ID:      "850",
 		Name:    "Carl",
+		DOB:     opensearchutil.TimeBasicDate(time.Date(1960, 01, 01, 0, 0, 0, 0, time.UTC)),
 		Age:     63,
 		Address: address{PostalCode: 10000},
 	}
 
 	builder := opensearchutil.NewRequestBodyBuilder()
+
+	indexName := "people_1"
 	body, err := builder.BuildIndexBody([]opensearchutil.ObjectWrapper{
-		{ID: ann.ID, Index: "people", Object: ann},
-		{ID: bob.ID, Index: "people", Object: bob},
-		{ID: carl.ID, Index: "people", Object: carl},
+		{ID: ann.ID, Index: indexName, Object: ann},
+		{ID: bob.ID, Index: indexName, Object: bob},
+		{ID: carl.ID, Index: indexName, Object: carl},
 	})
 	if err != nil {
 		fmt.Printf("Bulk: %v\n", err)
@@ -188,12 +196,13 @@ func main() {
 Output:
 ```
 Request body: 
-{"index":{"_index":"people","_id":"680"}}
-{"id":"680","name":"Ann","age":40,"address":{"postal_code":10000}}
-{"index":{"_index":"people","_id":"720"}}
-{"id":"720","name":"Bob","age":38,"address":{"postal_code":38000}}
-{"index":{"_index":"people","_id":"850"}}
-{"id":"850","name":"Carl","age":63,"address":{"postal_code":10000}}
+{"index":{"_index":"people_1","_id":"680"}}
+{"id":"680","name":"Ann","age":40,"dob":"19830101","address":{"postal_code":10000}}
+{"index":{"_index":"people_1","_id":"720"}}
+{"id":"720","name":"Bob","age":38,"dob":"19850101","address":{"postal_code":38000}}
+{"index":{"_index":"people_1","_id":"850"}}
+{"id":"850","name":"Carl","age":63,"dob":"19600101","address":{"postal_code":10000}}
 
 Response: 200 OK
+
 ```

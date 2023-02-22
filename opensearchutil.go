@@ -5,8 +5,7 @@ import (
 )
 
 const (
-	DefaultTimeFormat = "basic_date_time"
-	DefaultMaxDepth   = 2
+	DefaultMaxDepth = 2
 
 	tagKey          = "opensearch"
 	tagOptionType   = "type"

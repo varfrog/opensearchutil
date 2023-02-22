@@ -51,7 +51,12 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 	t := v.Type()
 	for i := 0; i < t.NumField(); i++ {
 		tField := t.Field(i)
+		fieldName := tField.Name
 		resolvedField := b.resolveField(tField, v.Field(i))
+
+		if err := validateField(resolvedField); err != nil {
+			return nil, errors.Wrapf(err, "validateField")
+		}
 
 		fieldType, err := b.resolveFieldType(resolvedField)
 		if err != nil {
@@ -63,7 +68,7 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 			return nil, errors.Wrapf(err, "resolveFieldFormat")
 		}
 
-		transformedFieldName, err := b.optionContainer.fieldNameTransformer.TransformFieldName(tField.Name)
+		transformedFieldName, err := b.optionContainer.fieldNameTransformer.TransformFieldName(fieldName)
 		if err != nil {
 			return nil, errors.Wrapf(err, "TransformFieldName")
 		}
@@ -75,9 +80,7 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 				FieldFormat: fieldFormat,
 			})
 			continue
-		}
-
-		if resolvedField.kind == reflect.Struct && nthLevel+1 <= b.optionContainer.maxDepth {
+		} else if resolvedField.kind == reflect.Struct && nthLevel+1 <= b.optionContainer.maxDepth {
 			children, err := b.doBuildMappingProperties(resolvedField.value.Interface(), nthLevel+1)
 			if err != nil {
 				return nil, errors.Wrapf(err, "nested b.doBuildMappingProperties")
@@ -88,9 +91,19 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 				FieldFormat: fieldFormat,
 			})
 			continue
-		}
+		} // else - error, TBD.
 	}
 	return mappingProperties, nil
+}
+
+func validateField(field fieldWrapper) error {
+	if field.kind == reflect.Struct {
+		switch field.value.Interface().(type) {
+		case time.Time:
+			return ErrGotBuiltInTimeField
+		}
+	}
+	return nil
 }
 
 func (b *MappingPropertiesBuilder) resolveFieldType(field fieldWrapper) (string, error) {
@@ -102,9 +115,10 @@ func (b *MappingPropertiesBuilder) resolveFieldType(field fieldWrapper) (string,
 		return b.getDefaultOSTypeFromPrimitiveKind(field.kind), nil
 	}
 	if field.kind == reflect.Struct {
-		switch field.value.Interface().(type) {
-		case time.Time:
-			return "date", nil
+		if x, ok := field.value.Interface().(OpenSearchDateType); ok {
+			if x.GetOpenSearchFieldType() != "" {
+				return "date", nil
+			}
 		}
 	}
 	return "", nil
@@ -116,9 +130,10 @@ func (b *MappingPropertiesBuilder) resolveFieldFormat(field fieldWrapper) (*stri
 		return &fieldFormatOverride, nil
 	}
 	if field.kind == reflect.Struct {
-		switch field.value.Interface().(type) {
-		case time.Time:
-			return makePtr(DefaultTimeFormat), nil
+		if x, ok := field.value.Interface().(OpenSearchDateType); ok {
+			if x.GetOpenSearchFieldType() != "" {
+				return makePtr(x.GetOpenSearchFieldType()), nil
+			}
 		}
 	}
 	return nil, nil

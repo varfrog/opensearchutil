@@ -1,6 +1,7 @@
 package opensearchutil
 
 import (
+	"errors"
 	"github.com/onsi/gomega"
 	"testing"
 	"time"
@@ -108,29 +109,47 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_SetsSpecifiedTypeOrFall
 	))
 }
 
-func TestMappingPropertiesBuilder_BuildMappingProperties_SetsDefaultFormatForTimeType(t *testing.T) {
+func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsWhenNoTypeTagForTimeField(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
-	type person struct {
-		Created time.Time
-		DOB     time.Time `opensearch:"format:basic_date"`
+	type foo struct {
+		A TimeBasicDateTime
+		B TimeBasicDateTimeNoMillis
+		C TimeBasicDate
 	}
 
 	builder := NewMappingPropertiesBuilder()
-	mps, err := builder.BuildMappingProperties(person{})
+	mps, err := builder.BuildMappingProperties(foo{})
 	g.Expect(err).To(gomega.BeNil())
 	g.Expect(mps).To(gomega.ConsistOf(
 		MappingProperty{
-			FieldName:   "created",
+			FieldName:   "a",
 			FieldType:   "date",
-			FieldFormat: makePtr(DefaultTimeFormat),
+			FieldFormat: makePtr("basic_date_time"),
 		},
 		MappingProperty{
-			FieldName:   "dob",
+			FieldName:   "b",
+			FieldType:   "date",
+			FieldFormat: makePtr("basic_date_time_no_millis"),
+		},
+		MappingProperty{
+			FieldName:   "c",
 			FieldType:   "date",
 			FieldFormat: makePtr("basic_date"),
 		},
 	))
+}
+
+func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsWhenFieldIsTime(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type person struct {
+		DOB time.Time `opensearch:"format:basic_date"`
+	}
+
+	builder := NewMappingPropertiesBuilder()
+	_, err := builder.BuildMappingProperties(person{})
+	g.Expect(errors.Is(err, ErrGotBuiltInTimeField)).To(gomega.BeTrue())
 }
 
 func TestMappingPropertiesBuilder_BuildMappingProperties_DoesNotExceedDefaultMaxDepthWithRecursiveField(t *testing.T) {

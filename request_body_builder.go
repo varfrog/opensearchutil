@@ -11,7 +11,10 @@ type ObjectWrapper struct {
 	// ID represents the _id property of a document
 	ID string
 
-	Index  string
+	// Index is the name of the index where this object will be indexed
+	Index string
+
+	// Object represents the document to be indexed. It must be
 	Object interface{}
 }
 
