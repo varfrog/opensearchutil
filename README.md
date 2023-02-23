@@ -3,7 +3,9 @@
 Utilities for working with OpenSearch.
 
 - **IndexGenerator**: given an object, makes an OpenSearch index template,
-- **RequestBodyBuilder**: generates a request body for `POST _bulk`.
+- **Field types**: go types for struct fields that:
+  - when the struct is marshalled into JSON, the fields get marshalled into valid OpenSearch types,
+  - when generating an index mapping JSON, the fields get assigned the appropriate OpenSearch type and format.
 
 ## IndexGenerator
 
@@ -107,102 +109,84 @@ Output:
 The resulting JSON contents is then used in a request to the [Create index API request](https://opensearch.org/docs/1.0/opensearch/rest-api/create-index/). Also specify "settings" and "aliases" that suit your needs.
 
 
-## RequestBodyBuilder
+## Field types
 
 ```go
 package main
 
 import (
-	"crypto/tls"
+	"encoding/json"
 	"fmt"
-	"github.com/opensearch-project/opensearch-go"
 	"github.com/varfrog/opensearchutil"
-	"net/http"
 	"os"
-	"strings"
 	"time"
 )
 
 func main() {
-	client, err := opensearch.NewClient(opensearch.Config{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
-		Addresses: []string{"https://localhost:9200"},
-		Username:  "admin",
-		Password:  "admin",
-	})
+	type dates struct {
+		DateA opensearchutil.TimeBasicDate             `json:"date_a"`
+		DateB opensearchutil.TimeBasicDateTimeNoMillis `json:"date_b"`
+		DateC opensearchutil.TimeBasicDateTime         `json:"date_c"`
+	}
+
+	t := time.Now()
+	d := dates{
+		DateA: opensearchutil.TimeBasicDate(t),
+		DateB: opensearchutil.TimeBasicDateTimeNoMillis(t),
+		DateC: opensearchutil.TimeBasicDateTime(t),
+	}
+
+	// When generating an index mapping JSON, the fields get assigned the approprate OpenSearch type and format
+	//
+	mappingProperties, err := opensearchutil.NewMappingPropertiesBuilder().BuildMappingProperties(d)
 	if err != nil {
-		fmt.Printf("NewClient: %v\n", err)
+		fmt.Printf("BuildMappingProperties: %v", err)
 		os.Exit(1)
 	}
-
-	type address struct {
-		PostalCode uint32 `json:"postal_code"`
-	}
-	type person struct {
-		ID      string                       `json:"id"      opensearch:"type=keyword"`
-		Name    string                       `json:"name"`
-		Age     uint8                        `json:"age"`
-		DOB     opensearchutil.TimeBasicDate `json:"dob"`
-		Address address                      `json:"address"`
-	}
-
-	ann := person{
-		ID:      "680",
-		Name:    "Ann",
-		DOB:     opensearchutil.TimeBasicDate(time.Date(1983, 01, 01, 0, 0, 0, 0, time.UTC)),
-		Age:     40,
-		Address: address{PostalCode: 10000},
-	}
-	bob := person{
-		ID:      "720",
-		Name:    "Bob",
-		DOB:     opensearchutil.TimeBasicDate(time.Date(1985, 01, 01, 0, 0, 0, 0, time.UTC)),
-		Age:     38,
-		Address: address{PostalCode: 38000},
-	}
-	carl := person{
-		ID:      "850",
-		Name:    "Carl",
-		DOB:     opensearchutil.TimeBasicDate(time.Date(1960, 01, 01, 0, 0, 0, 0, time.UTC)),
-		Age:     63,
-		Address: address{PostalCode: 10000},
-	}
-
-	builder := opensearchutil.NewRequestBodyBuilder()
-
-	indexName := "people_1"
-	body, err := builder.BuildIndexBody([]opensearchutil.ObjectWrapper{
-		{ID: ann.ID, Index: indexName, Object: ann},
-		{ID: bob.ID, Index: indexName, Object: bob},
-		{ID: carl.ID, Index: indexName, Object: carl},
-	})
+	jsonBytes, err := opensearchutil.NewIndexGenerator().GenerateIndexJson(mappingProperties)
 	if err != nil {
-		fmt.Printf("Bulk: %v\n", err)
+		fmt.Printf("GenerateIndexJson: %v", err)
 		os.Exit(1)
 	}
-	fmt.Printf("Request body: \n%s\n", body)
+	fmt.Printf("Mapping JSON:\n%s\n", string(jsonBytes))
 
-	resp, err := client.Bulk(strings.NewReader(body))
+	// When marshalling into JSON, the fields marshall into the approprate formats:
+	//
+	jsonBytes, err = json.MarshalIndent(&d, "", "  ")
 	if err != nil {
-		fmt.Printf("Bulk: %v\n", err)
+		fmt.Printf("json.MarshalIndent: %v", err)
 		os.Exit(1)
 	}
-	fmt.Printf("Response: %v\n", resp.Status())
+	fmt.Printf("\nDocument body:\n%s\n", string(jsonBytes))
 }
 ```
 
 Output:
 ```
-Request body: 
-{"index":{"_index":"people_1","_id":"680"}}
-{"id":"680","name":"Ann","age":40,"dob":"19830101","address":{"postal_code":10000}}
-{"index":{"_index":"people_1","_id":"720"}}
-{"id":"720","name":"Bob","age":38,"dob":"19850101","address":{"postal_code":38000}}
-{"index":{"_index":"people_1","_id":"850"}}
-{"id":"850","name":"Carl","age":63,"dob":"19600101","address":{"postal_code":10000}}
+Mapping JSON:
+{
+   "mappings": {
+      "properties": {
+         "date_a": {
+            "format": "basic_date",
+            "type": "date"
+         },
+         "date_b": {
+            "format": "basic_date_time_no_millis",
+            "type": "date"
+         },
+         "date_c": {
+            "format": "basic_date_time",
+            "type": "date"
+         }
+      }
+   }
+}
 
-Response: 200 OK
-
+Document body:
+{
+  "date_a": "20230223",
+  "date_b": "20230223T224633+02:00",
+  "date_c": "20230223T224633.808+02:00"
+}
 ```
