@@ -125,17 +125,17 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsWhenNoTypeTagForT
 		MappingProperty{
 			FieldName:   "a",
 			FieldType:   "date",
-			FieldFormat: makePtr("basic_date_time"),
+			FieldFormat: MakePtr("basic_date_time"),
 		},
 		MappingProperty{
 			FieldName:   "b",
 			FieldType:   "date",
-			FieldFormat: makePtr("basic_date_time_no_millis"),
+			FieldFormat: MakePtr("basic_date_time_no_millis"),
 		},
 		MappingProperty{
 			FieldName:   "c",
 			FieldType:   "date",
-			FieldFormat: makePtr("basic_date"),
+			FieldFormat: MakePtr("basic_date"),
 		},
 	))
 }

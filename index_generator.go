@@ -1,18 +1,28 @@
 package opensearchutil
 
 import (
-	"bytes"
 	_ "embed"
+	"encoding/json"
 	"github.com/pkg/errors"
-	"text/template"
 )
-
-//go:embed index.gotmpl
-var indexTmpl string
 
 type IndexGenerator struct {
 	optionContainer indexGeneratorOptionContainer
 }
+
+type (
+	index struct {
+		Mappings parentNode `json:"mappings"`
+	}
+	parentNode struct {
+		// Property maps from a property name to another parentNode or to a leafNode
+		Properties map[string]interface{} `json:"properties"`
+	}
+	leafNode struct {
+		Type   string  `json:"type"`
+		Format *string `json:"format,omitempty"`
+	}
+)
 
 func NewIndexGenerator(options ...IndexGeneratorOption) *IndexGenerator {
 	optContainer := indexGeneratorOptionContainer{}
@@ -26,34 +36,38 @@ func NewIndexGenerator(options ...IndexGeneratorOption) *IndexGenerator {
 	return &IndexGenerator{optionContainer: optContainer}
 }
 
-func (g *IndexGenerator) GenerateIndexJson(mappingProperties []MappingProperty) ([]byte, error) {
-	type indexTmplData struct {
-		MappingProperties []MappingProperty
-	}
-
-	var funcMap template.FuncMap = map[string]interface{}{
-		"notLast": func(index int, len int) bool {
-			return index+1 < len
+func (g *IndexGenerator) GenerateIndexJson(
+	mappingProperties []MappingProperty,
+	_ *IndexSettings, // todo
+) ([]byte, error) {
+	jsonBytes, err := json.Marshal(index{
+		Mappings: parentNode{
+			Properties: g.buildProperties(mappingProperties),
 		},
-	}
-
-	tmpl, err := template.New("IndexTmpl").Funcs(funcMap).Parse(indexTmpl)
-	if err != nil {
-		return nil, errors.Wrapf(err, "parse template")
-	}
-
-	var tmplResult bytes.Buffer
-	err = tmpl.Execute(&tmplResult, indexTmplData{
-		MappingProperties: mappingProperties,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "tpl.Execute")
+		return nil, errors.Wrapf(err, "json.Marshal")
 	}
 
-	formattedJson, err := g.optionContainer.jsonFormatter.FormatJson(tmplResult.Bytes())
+	formattedJson, err := g.optionContainer.jsonFormatter.FormatJson(jsonBytes)
 	if err != nil {
 		return nil, errors.Wrapf(err, "formatJson")
 	}
 
 	return formattedJson, nil
+}
+
+func (g *IndexGenerator) buildProperties(mappingProperties []MappingProperty) map[string]interface{} {
+	m := make(map[string]interface{}, len(mappingProperties))
+	for _, mp := range mappingProperties {
+		if mp.Children == nil {
+			m[mp.FieldName] = leafNode{
+				Type:   mp.FieldType,
+				Format: mp.FieldFormat,
+			}
+		} else {
+			m[mp.FieldName] = parentNode{Properties: g.buildProperties(mp.Children)}
+		}
+	}
+	return m
 }

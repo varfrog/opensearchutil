@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func Test_makePtr(t *testing.T) {
+func Test_MakePtr(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	str := "aaa"
@@ -16,9 +16,9 @@ func Test_makePtr(t *testing.T) {
 		name string
 	}{name: "tom"}
 
-	g.Expect(*makePtr(str)).To(gomega.Equal(str))
-	g.Expect(*makePtr(num)).To(gomega.Equal(num))
-	g.Expect(*makePtr(obj)).To(gomega.Equal(obj))
+	g.Expect(*MakePtr(str)).To(gomega.Equal(str))
+	g.Expect(*MakePtr(num)).To(gomega.Equal(num))
+	g.Expect(*MakePtr(obj)).To(gomega.Equal(obj))
 }
 
 func Test_getTagOptionValue(t *testing.T) {

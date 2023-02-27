@@ -132,7 +132,7 @@ func (b *MappingPropertiesBuilder) resolveFieldFormat(field fieldWrapper) (*stri
 	if field.kind == reflect.Struct {
 		if x, ok := field.value.Interface().(OpenSearchDateType); ok {
 			if x.GetOpenSearchFieldType() != "" {
-				return makePtr(x.GetOpenSearchFieldType()), nil
+				return MakePtr(x.GetOpenSearchFieldType()), nil
 			}
 		}
 	}

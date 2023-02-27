@@ -51,7 +51,7 @@ func TestIndexGenerator_GenerateIndexJson_buildsATree(t *testing.T) {
 		},
 	}
 
-	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties)
+	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties, nil)
 	g.Expect(err).To(gomega.BeNil())
 	g.Expect(string(resultJson)).To(gomega.Equal(`{
    "mappings": {
@@ -98,11 +98,11 @@ func TestIndexGenerator_GenerateIndexJson_addsFormatIfSpecified(t *testing.T) {
 		{
 			FieldName:   "created_at",
 			FieldType:   "date",
-			FieldFormat: makePtr("basic_time"),
+			FieldFormat: MakePtr("basic_time"),
 		},
 	}
 
-	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties)
+	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties, nil)
 	g.Expect(err).To(gomega.BeNil())
 	g.Expect(string(resultJson)).To(gomega.Equal(`{
    "mappings": {
