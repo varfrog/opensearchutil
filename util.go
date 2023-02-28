@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func makePtr[V any](v V) *V {
+func MakePtr[V any](v V) *V {
 	return &v
 }
 

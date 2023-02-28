@@ -51,7 +51,7 @@ func TestIndexGenerator_GenerateIndexJson_buildsATree(t *testing.T) {
 		},
 	}
 
-	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties)
+	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties, nil)
 	g.Expect(err).To(gomega.BeNil())
 	g.Expect(string(resultJson)).To(gomega.Equal(`{
    "mappings": {
@@ -98,11 +98,11 @@ func TestIndexGenerator_GenerateIndexJson_addsFormatIfSpecified(t *testing.T) {
 		{
 			FieldName:   "created_at",
 			FieldType:   "date",
-			FieldFormat: makePtr("basic_time"),
+			FieldFormat: MakePtr("basic_time"),
 		},
 	}
 
-	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties)
+	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties, nil)
 	g.Expect(err).To(gomega.BeNil())
 	g.Expect(string(resultJson)).To(gomega.Equal(`{
    "mappings": {
@@ -112,6 +112,36 @@ func TestIndexGenerator_GenerateIndexJson_addsFormatIfSpecified(t *testing.T) {
             "type": "date"
          }
       }
+   }
+}`))
+}
+
+func TestIndexGenerator_GenerateIndexJson_addsSettings(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	resultJson, err := NewIndexGenerator().GenerateIndexJson([]MappingProperty{
+		{
+			FieldName: "id",
+			FieldType: "integer",
+		},
+	}, &IndexSettings{
+		NumberOfShards:  MakePtr(uint16(1)),
+		Hidden:          MakePtr(true),
+		RefreshInterval: MakePtr("-1"),
+	})
+	g.Expect(err).To(gomega.BeNil())
+	g.Expect(string(resultJson)).To(gomega.Equal(`{
+   "mappings": {
+      "properties": {
+         "id": {
+            "type": "integer"
+         }
+      }
+   },
+   "settings": {
+      "hidden": true,
+      "number_of_shards": 1,
+      "refresh_interval": "-1"
    }
 }`))
 }
