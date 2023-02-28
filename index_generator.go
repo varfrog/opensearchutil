@@ -12,7 +12,8 @@ type IndexGenerator struct {
 
 type (
 	index struct {
-		Mappings parentNode `json:"mappings"`
+		Mappings parentNode     `json:"mappings"`
+		Settings *IndexSettings `json:"settings,omitempty"`
 	}
 	parentNode struct {
 		// Property maps from a property name to another parentNode or to a leafNode
@@ -38,12 +39,13 @@ func NewIndexGenerator(options ...IndexGeneratorOption) *IndexGenerator {
 
 func (g *IndexGenerator) GenerateIndexJson(
 	mappingProperties []MappingProperty,
-	_ *IndexSettings, // todo
+	settings *IndexSettings,
 ) ([]byte, error) {
 	jsonBytes, err := json.Marshal(index{
 		Mappings: parentNode{
 			Properties: g.buildProperties(mappingProperties),
 		},
+		Settings: settings,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "json.Marshal")

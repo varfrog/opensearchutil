@@ -115,3 +115,33 @@ func TestIndexGenerator_GenerateIndexJson_addsFormatIfSpecified(t *testing.T) {
    }
 }`))
 }
+
+func TestIndexGenerator_GenerateIndexJson_addsSettings(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	resultJson, err := NewIndexGenerator().GenerateIndexJson([]MappingProperty{
+		{
+			FieldName: "id",
+			FieldType: "integer",
+		},
+	}, &IndexSettings{
+		NumberOfShards:  MakePtr(uint16(1)),
+		Hidden:          MakePtr(true),
+		RefreshInterval: MakePtr("-1"),
+	})
+	g.Expect(err).To(gomega.BeNil())
+	g.Expect(string(resultJson)).To(gomega.Equal(`{
+   "mappings": {
+      "properties": {
+         "id": {
+            "type": "integer"
+         }
+      }
+   },
+   "settings": {
+      "hidden": true,
+      "number_of_shards": 1,
+      "refresh_interval": "-1"
+   }
+}`))
+}
