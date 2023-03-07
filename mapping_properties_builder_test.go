@@ -109,7 +109,7 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_SetsSpecifiedTypeOrFall
 	))
 }
 
-func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsWhenNoTypeTagForTimeField(t *testing.T) {
+func TestMappingPropertiesBuilder_BuildMappingProperties_DefaultsToCorrectTimeFormats(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	type foo struct {
