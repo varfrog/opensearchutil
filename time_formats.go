@@ -27,10 +27,12 @@ type OpenSearchDateType interface {
 	GetOpenSearchFieldType() string
 }
 
-func (t *TimeBasicDateTime) MarshalText() ([]byte, error) {
-	return []byte(time.Time(*t).Format(FormatTimeBasicDateTime)), nil
+//goland:noinspection GoMixedReceiverTypes
+func (t TimeBasicDateTime) MarshalText() ([]byte, error) {
+	return []byte(time.Time(t).Format(FormatTimeBasicDateTime)), nil
 }
 
+//goland:noinspection GoMixedReceiverTypes
 func (t *TimeBasicDateTime) UnmarshalText(text []byte) error {
 	parsedTime, err := time.Parse(FormatTimeBasicDateTime, string(text))
 	if err != nil {
@@ -40,16 +42,19 @@ func (t *TimeBasicDateTime) UnmarshalText(text []byte) error {
 	return nil
 }
 
+//goland:noinspection GoMixedReceiverTypes
 func (t TimeBasicDateTime) GetOpenSearchFieldType() string {
 	return "basic_date_time"
 }
 
 // TimeBasicDateTimeNoMillis
 
-func (t *TimeBasicDateTimeNoMillis) MarshalText() ([]byte, error) {
-	return []byte(time.Time(*t).Format(FormatTimeBasicDateTimeNoMillis)), nil
+//goland:noinspection GoMixedReceiverTypes
+func (t TimeBasicDateTimeNoMillis) MarshalText() ([]byte, error) {
+	return []byte(time.Time(t).Format(FormatTimeBasicDateTimeNoMillis)), nil
 }
 
+//goland:noinspection GoMixedReceiverTypes
 func (t *TimeBasicDateTimeNoMillis) UnmarshalText(text []byte) error {
 	parsedTime, err := time.Parse(FormatTimeBasicDateTimeNoMillis, string(text))
 	if err != nil {
@@ -59,16 +64,19 @@ func (t *TimeBasicDateTimeNoMillis) UnmarshalText(text []byte) error {
 	return nil
 }
 
+//goland:noinspection GoMixedReceiverTypes
 func (t TimeBasicDateTimeNoMillis) GetOpenSearchFieldType() string {
 	return "basic_date_time_no_millis"
 }
 
 // TimeBasicDate
 
-func (t *TimeBasicDate) MarshalText() ([]byte, error) {
-	return []byte(time.Time(*t).Format(FormatTimeBasicDate)), nil
+//goland:noinspection GoMixedReceiverTypes
+func (t TimeBasicDate) MarshalText() ([]byte, error) {
+	return []byte(time.Time(t).Format(FormatTimeBasicDate)), nil
 }
 
+//goland:noinspection GoMixedReceiverTypes
 func (t *TimeBasicDate) UnmarshalText(text []byte) error {
 	parsedTime, err := time.Parse(FormatTimeBasicDate, string(text))
 	if err != nil {
@@ -78,6 +86,7 @@ func (t *TimeBasicDate) UnmarshalText(text []byte) error {
 	return nil
 }
 
+//goland:noinspection GoMixedReceiverTypes
 func (t TimeBasicDate) GetOpenSearchFieldType() string {
 	return "basic_date"
 }
