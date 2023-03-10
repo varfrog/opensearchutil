@@ -1,7 +1,9 @@
 package opensearchutil
 
 import (
+	"encoding/json"
 	"github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	"testing"
 )
 
@@ -53,7 +55,8 @@ func TestIndexGenerator_GenerateIndexJson_buildsATree(t *testing.T) {
 
 	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties, nil)
 	g.Expect(err).To(gomega.BeNil())
-	g.Expect(string(resultJson)).To(gomega.Equal(`{
+
+	assertJsonsEqual(g, resultJson, []byte(`{
    "mappings": {
       "properties": {
          "company": {
@@ -104,6 +107,7 @@ func TestIndexGenerator_GenerateIndexJson_addsFormatIfSpecified(t *testing.T) {
 
 	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties, nil)
 	g.Expect(err).To(gomega.BeNil())
+
 	g.Expect(string(resultJson)).To(gomega.Equal(`{
    "mappings": {
       "properties": {
@@ -130,7 +134,8 @@ func TestIndexGenerator_GenerateIndexJson_addsSettings(t *testing.T) {
 		RefreshInterval: MakePtr("-1"),
 	})
 	g.Expect(err).To(gomega.BeNil())
-	g.Expect(string(resultJson)).To(gomega.Equal(`{
+
+	assertJsonsEqual(g, resultJson, []byte(`{
    "mappings": {
       "properties": {
          "id": {
@@ -144,4 +149,45 @@ func TestIndexGenerator_GenerateIndexJson_addsSettings(t *testing.T) {
       "refresh_interval": "-1"
    }
 }`))
+}
+
+func TestIndexGenerator_GenerateIndexJson_addsDynamic(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	resultJson, err := NewIndexGenerator().GenerateIndexJson([]MappingProperty{
+		{
+			FieldName: "id",
+			FieldType: "integer",
+		},
+	}, nil, WithStrictMapping(true))
+	g.Expect(err).To(gomega.BeNil())
+
+	assertJsonsEqual(g, resultJson, []byte(`{
+   "mappings": {
+	  "dynamic": "strict",
+      "properties": {
+         "id": {
+            "type": "integer"
+         }
+      }
+   }
+}`))
+}
+
+func makeJsonObj(jsonBytes []byte) (map[string]interface{}, error) {
+	var m map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &m); err != nil {
+		return map[string]interface{}{}, errors.Wrapf(err, "json.Unmarshal")
+	}
+	return m, nil
+}
+
+func assertJsonsEqual(g *gomega.WithT, jsonA []byte, jsonB []byte) {
+	objA, err := makeJsonObj(jsonA)
+	g.Expect(err).To(gomega.BeNil())
+
+	objB, err := makeJsonObj(jsonB)
+	g.Expect(err).To(gomega.BeNil())
+
+	g.Expect(objA).To(gomega.Equal(objB))
 }
