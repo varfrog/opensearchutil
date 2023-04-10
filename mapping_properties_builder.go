@@ -74,11 +74,15 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 		}
 
 		if fieldType != "" {
-			mappingProperties = append(mappingProperties, MappingProperty{
+			mappingProperty := MappingProperty{
 				FieldName:   transformedFieldName,
 				FieldType:   fieldType,
 				FieldFormat: fieldFormat,
-			})
+			}
+			if err := b.addProperties(resolvedField, &mappingProperty); err != nil {
+				return nil, errors.Wrapf(err, "addProperties")
+			}
+			mappingProperties = append(mappingProperties, mappingProperty)
 			continue
 		} else if resolvedField.kind == reflect.Struct && nthLevel+1 <= b.optionContainer.maxDepth {
 			children, err := b.doBuildMappingProperties(resolvedField.value.Interface(), nthLevel+1)
@@ -94,6 +98,19 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 		} // else - error, TBD.
 	}
 	return mappingProperties, nil
+}
+
+func (b *MappingPropertiesBuilder) addProperties(resolvedField fieldWrapper, mappingProperty *MappingProperty) error {
+	indexPrefixes := getTagOptionValue(resolvedField.field, tagKey, tagOptionIndexPrefixes)
+	if indexPrefixes != "" {
+		opts := parseCustomPropertyValue(indexPrefixes)
+		mappingProperty.IndexPrefixes = MakePtr(make(map[string]string, len(opts)))
+		for k, v := range opts {
+			(*mappingProperty.IndexPrefixes)[k] = v
+		}
+	}
+
+	return nil
 }
 
 func validateField(field fieldWrapper) error {

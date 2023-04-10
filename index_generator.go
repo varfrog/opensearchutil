@@ -23,8 +23,9 @@ type (
 		Properties map[string]interface{} `json:"properties"`
 	}
 	leafNode struct {
-		Type   string  `json:"type"`
-		Format *string `json:"format,omitempty"`
+		Type          string             `json:"type"`
+		Format        *string            `json:"format,omitempty"`
+		IndexPrefixes *map[string]string `json:"index_prefixes,omitempty"`
 	}
 )
 
@@ -77,10 +78,12 @@ func (g *IndexGenerator) buildProperties(mappingProperties []MappingProperty) ma
 	m := make(map[string]interface{}, len(mappingProperties))
 	for _, mp := range mappingProperties {
 		if mp.Children == nil {
-			m[mp.FieldName] = leafNode{
-				Type:   mp.FieldType,
-				Format: mp.FieldFormat,
+			node := leafNode{
+				Type:          mp.FieldType,
+				Format:        mp.FieldFormat,
+				IndexPrefixes: mp.IndexPrefixes,
 			}
+			m[mp.FieldName] = node
 		} else {
 			m[mp.FieldName] = parentNode{Properties: g.buildProperties(mp.Children)}
 		}

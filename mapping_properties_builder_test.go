@@ -207,3 +207,21 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_DoesNotExceedGivenMaxDe
 	g.Expect(err).To(gomega.BeNil())
 	g.Expect(mps).To(gomega.Equal(expectedMappingProperties))
 }
+
+func TestMappingPropertiesBuilder_BuildMappingProperties_SetsCustomProps(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type person struct {
+		BusinessName string `opensearch:"index_prefixes:min_chars=2;max_chars=10"`
+	}
+
+	builder := NewMappingPropertiesBuilder()
+	mps, err := builder.BuildMappingProperties(person{})
+	g.Expect(err).To(gomega.BeNil())
+	g.Expect(mps).To(gomega.HaveLen(1))
+	g.Expect(mps[0].IndexPrefixes).ToNot(gomega.BeNil())
+	g.Expect(*mps[0].IndexPrefixes).To(gomega.Equal(map[string]string{
+		"min_chars": "2",
+		"max_chars": "10",
+	}))
+}
