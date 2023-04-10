@@ -13,44 +13,44 @@ Utilities for working with OpenSearch.
 package main
 
 import (
-	_ "embed"
-	"fmt"
-	"github.com/varfrog/opensearchutil"
-	"os"
+  _ "embed"
+  "fmt"
+  "github.com/varfrog/opensearchutil"
+  "os"
 )
 
 func main() {
-	type location struct {
-		FullAddress string
-		Confirmed   bool
-	}
-	type person struct {
-		Name           string
-		Email          string `opensearch:"type:keyword"`
-		DOB            opensearchutil.TimeBasicDateTimeNoMillis
-		Age            uint8
-		AccountBalance float64
-		IsDead         bool
-		HomeLoc        location
-		WorkLoc        *location
-		SocialSecurity *string
-	}
+  type location struct {
+    FullAddress string
+    Confirmed   bool
+  }
+  type person struct {
+    Name           string
+    Email          string `opensearch:"type:keyword"`
+    DOB            opensearchutil.TimeBasicDateTimeNoMillis
+    Age            uint8
+    AccountBalance float64
+    IsDead         bool
+    HomeLoc        location
+    WorkLoc        *location
+    SocialSecurity *string `opensearch:"index_prefixes:min_chars=3;max_chars=5"`
+  }
 
-	builder := opensearchutil.NewMappingPropertiesBuilder()
-	jsonGenerator := opensearchutil.NewIndexGenerator()
+  builder := opensearchutil.NewMappingPropertiesBuilder()
+  jsonGenerator := opensearchutil.NewIndexGenerator()
 
-	mappingProperties, err := builder.BuildMappingProperties(person{})
-	if err != nil {
-		fmt.Printf("BuildMappingProperties: %v", err)
-		os.Exit(1)
-	}
+  mappingProperties, err := builder.BuildMappingProperties(person{})
+  if err != nil {
+    fmt.Printf("BuildMappingProperties: %v", err)
+    os.Exit(1)
+  }
 
-	indexJson, err := jsonGenerator.GenerateIndexJson(mappingProperties)
-	if err != nil {
-		fmt.Printf("GenerateIndexJson: %v", err)
-		os.Exit(1)
-	}
-	fmt.Printf("%s\n", string(indexJson))
+  indexJson, err := jsonGenerator.GenerateIndexJson(mappingProperties, nil)
+  if err != nil {
+    fmt.Printf("GenerateIndexJson: %v", err)
+    os.Exit(1)
+  }
+  fmt.Printf("%s\n", string(indexJson))
 }
 ```
 
@@ -89,6 +89,10 @@ Output:
         "type": "text"
       },
       "social_security": {
+        "index_prefixes": {
+          "max_chars": "5",
+          "min_chars": "3"
+        },
         "type": "text"
       },
       "work_loc": {
@@ -143,7 +147,7 @@ func main() {
 		fmt.Printf("BuildMappingProperties: %v", err)
 		os.Exit(1)
 	}
-	jsonBytes, err := opensearchutil.NewIndexGenerator().GenerateIndexJson(mappingProperties)
+	jsonBytes, err := opensearchutil.NewIndexGenerator().GenerateIndexJson(mappingProperties, nil)
 	if err != nil {
 		fmt.Printf("GenerateIndexJson: %v", err)
 		os.Exit(1)
