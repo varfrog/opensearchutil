@@ -45,7 +45,11 @@ func main() {
     os.Exit(1)
   }
 
-  indexJson, err := jsonGenerator.GenerateIndexJson(mappingProperties, nil)
+  indexJson, err := jsonGenerator.GenerateIndexJson(
+    mappingProperties, &opensearchutil.IndexSettings{
+      NumberOfShards: opensearchutil.MakePtr(uint16(1)),
+    },
+    opensearchutil.WithStrictMapping(true))
   if err != nil {
     fmt.Printf("GenerateIndexJson: %v", err)
     os.Exit(1)
@@ -58,6 +62,7 @@ Output:
 ```json
 {
   "mappings": {
+    "dynamic": "strict",
     "properties": {
       "account_balance": {
         "type": "float"
@@ -106,6 +111,9 @@ Output:
         }
       }
     }
+  },
+  "settings": {
+    "number_of_shards": 1
   }
 }
 ```
