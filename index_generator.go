@@ -11,9 +11,13 @@ type IndexGenerator struct {
 }
 
 type (
-	index struct {
+	indexDoc struct {
 		Mappings parentNode     `json:"mappings"`
 		Settings *IndexSettings `json:"settings,omitempty"`
+	}
+	propertiesDoc struct {
+		// Property maps from a property name to another parentNode or to a leafNode
+		Properties map[string]interface{} `json:"properties"`
 	}
 	parentNode struct {
 		// Dynamic applies to the root mapping and can have a value "strict"
@@ -41,6 +45,7 @@ func NewIndexGenerator(options ...IndexGeneratorOption) *IndexGenerator {
 	return &IndexGenerator{optionContainer: optContainer}
 }
 
+// GenerateIndexJson generates a JSON document with fields "mappings" and "settings"
 func (g *IndexGenerator) GenerateIndexJson(
 	mappingProperties []MappingProperty,
 	settings *IndexSettings,
@@ -55,7 +60,7 @@ func (g *IndexGenerator) GenerateIndexJson(
 		dynamic = MakePtr("strict")
 	}
 
-	jsonBytes, err := json.Marshal(index{
+	jsonBytes, err := json.Marshal(indexDoc{
 		Mappings: parentNode{
 			Dynamic:    dynamic,
 			Properties: g.buildProperties(mappingProperties),
@@ -71,6 +76,23 @@ func (g *IndexGenerator) GenerateIndexJson(
 		return nil, errors.Wrapf(err, "formatJson")
 	}
 
+	return formattedJson, nil
+}
+
+// GenerateMappingsJson generates a JSON document with with a field "properties". This type of document is used to
+// update an index mapping.
+func (g *IndexGenerator) GenerateMappingsJson(mappingProperties []MappingProperty) ([]byte, error) {
+	jsonBytes, err := json.Marshal(propertiesDoc{
+		Properties: g.buildProperties(mappingProperties),
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "json.Marshal")
+	}
+
+	formattedJson, err := g.optionContainer.jsonFormatter.FormatJson(jsonBytes)
+	if err != nil {
+		return nil, errors.Wrapf(err, "formatJson")
+	}
 	return formattedJson, nil
 }
 
