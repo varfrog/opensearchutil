@@ -205,6 +205,32 @@ func TestIndexGenerator_GenerateIndexJson_addsCustomProps(t *testing.T) {
 }`))
 }
 
+func TestIndexGenerator_GenerateIndexJson_addsAnalyzer(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	mappingProperties := []MappingProperty{
+		{
+			FieldName: "company_name",
+			FieldType: "text",
+			Analyzer:  MakePtr("standard"),
+		},
+	}
+
+	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties, nil)
+	g.Expect(err).To(gomega.BeNil())
+
+	g.Expect(string(resultJson)).To(gomega.Equal(`{
+   "mappings": {
+      "properties": {
+         "company_name": {
+            "analyzer": "standard",
+            "type": "text"
+         }
+      }
+   }
+}`))
+}
+
 func makeJsonObj(jsonBytes []byte) (map[string]interface{}, error) {
 	var m map[string]interface{}
 	if err := json.Unmarshal(jsonBytes, &m); err != nil {
