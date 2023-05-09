@@ -9,6 +9,8 @@ func MakePtr[V any](v V) *V {
 	return &v
 }
 
+// getTagOptionValue gets a tag option value. For example, given a tag "type:keyword", getTagOptionValue("type")
+// returns "keyword".
 func getTagOptionValue(structField reflect.StructField, tagKey string, optionKey string) string {
 	const tagOptionSep = ","
 	const keyValSep = ":"
@@ -25,6 +27,8 @@ func getTagOptionValue(structField reflect.StructField, tagKey string, optionKey
 	return ""
 }
 
+// parseCustomPropertyValue parses a string like "min_chars=2;foo=bar" into a map like
+// map[string]string{"min_chars":"2", "foo":"bar"}.
 func parseCustomPropertyValue(str string) map[string]string {
 	const keyValSep = "="
 	pairs := strings.Split(str, ";")

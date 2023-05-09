@@ -225,3 +225,18 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_SetsCustomProps(t *test
 		"max_chars": "10",
 	}))
 }
+
+func TestMappingPropertiesBuilder_BuildMappingProperties_SetsAnalyzer(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type person struct {
+		CompanyName string `opensearch:"analyzer:keyword"`
+	}
+
+	builder := NewMappingPropertiesBuilder()
+	mps, err := builder.BuildMappingProperties(person{})
+	g.Expect(err).To(gomega.BeNil())
+	g.Expect(mps).To(gomega.HaveLen(1))
+	g.Expect(mps[0].Analyzer).ToNot(gomega.BeNil())
+	g.Expect(*mps[0].Analyzer).To(gomega.Equal("keyword"))
+}

@@ -30,6 +30,7 @@ type (
 		Type          string             `json:"type"`
 		Format        *string            `json:"format,omitempty"`
 		IndexPrefixes *map[string]string `json:"index_prefixes,omitempty"`
+		Analyzer      *string            `json:"analyzer,omitempty"`
 	}
 )
 
@@ -103,6 +104,7 @@ func (g *IndexGenerator) buildProperties(mappingProperties []MappingProperty) ma
 			node := leafNode{
 				Type:          mp.FieldType,
 				Format:        mp.FieldFormat,
+				Analyzer:      mp.Analyzer,
 				IndexPrefixes: mp.IndexPrefixes,
 			}
 			m[mp.FieldName] = node

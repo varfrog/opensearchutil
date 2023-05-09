@@ -110,6 +110,11 @@ func (b *MappingPropertiesBuilder) addProperties(resolvedField fieldWrapper, map
 		}
 	}
 
+	analyzer := getTagOptionValue(resolvedField.field, tagKey, tagOptionAnalyzer)
+	if analyzer != "" {
+		mappingProperty.Analyzer = MakePtr(analyzer)
+	}
+
 	return nil
 }
 
