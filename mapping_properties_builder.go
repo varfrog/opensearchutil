@@ -1,6 +1,7 @@
 package opensearchutil
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"reflect"
 	"time"
@@ -84,7 +85,10 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 			}
 			mappingProperties = append(mappingProperties, mappingProperty)
 			continue
-		} else if resolvedField.kind == reflect.Struct && nthLevel+1 <= b.optionContainer.maxDepth {
+		} else if resolvedField.kind == reflect.Struct {
+			if nthLevel+1 > b.optionContainer.maxDepth {
+				continue
+			}
 			children, err := b.doBuildMappingProperties(resolvedField.value.Interface(), nthLevel+1)
 			if err != nil {
 				return nil, errors.Wrapf(err, "nested b.doBuildMappingProperties")
@@ -95,7 +99,9 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 				FieldFormat: fieldFormat,
 			})
 			continue
-		} // else - error, TBD.
+		} else {
+			return nil, fmt.Errorf("field not supported: %s", resolvedField.field.Name)
+		}
 	}
 	return mappingProperties, nil
 }
@@ -162,7 +168,7 @@ func (b *MappingPropertiesBuilder) resolveFieldFormat(field fieldWrapper) (*stri
 }
 
 // resolveField returns a wrapper object for the given field. If the field is a pointer, it returns a wrapper
-// for the dereferences field, since we treat both pointer and value fields the same.
+// for the dereferenced field, since we treat both pointer and value fields the same.
 func (b *MappingPropertiesBuilder) resolveField(structField reflect.StructField, value reflect.Value) fieldWrapper {
 	var kind reflect.Kind
 	var val reflect.Value
@@ -174,7 +180,15 @@ func (b *MappingPropertiesBuilder) resolveField(structField reflect.StructField,
 		val = value
 	}
 
-	var primitive bool
+	return fieldWrapper{
+		field:       structField,
+		kind:        kind,
+		value:       val,
+		isPrimitive: b.isPrimitive(kind),
+	}
+}
+
+func (b *MappingPropertiesBuilder) isPrimitive(kind reflect.Kind) bool {
 	switch kind {
 	case reflect.Bool,
 		reflect.Int,
@@ -190,14 +204,9 @@ func (b *MappingPropertiesBuilder) resolveField(structField reflect.StructField,
 		reflect.Float32,
 		reflect.Float64,
 		reflect.String:
-		primitive = true
-	}
-
-	return fieldWrapper{
-		field:       structField,
-		kind:        kind,
-		value:       val,
-		isPrimitive: primitive,
+		return true
+	default:
+		return false
 	}
 }
 
