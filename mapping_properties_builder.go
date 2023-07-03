@@ -100,11 +100,17 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 			})
 			continue
 		} else if !b.optionContainer.omitUnsupportedTypes {
+			if resolvedField.kind == reflect.Slice {
+				return nil, fmt.Errorf(
+					"slices are not supported (field '%s'), please use just the object and not its slice, you will still "+
+						"be able to index an array of objects in that field",
+					resolvedField.field.Name)
+			}
+
 			return nil, fmt.Errorf(
-				"field not supported: %s %s, please use opensearchutil.OmitUnsupportedTypes to skip"+
+				"field not supported: %s, please use opensearchutil.OmitUnsupportedTypes to skip"+
 					" fields of unsupported types",
-				resolvedField.field.Name,
-				resolvedField.field.Type.Name())
+				resolvedField.field.Name)
 		}
 	}
 	return mappingProperties, nil

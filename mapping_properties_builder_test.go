@@ -244,11 +244,8 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_SetsAnalyzer(t *testing
 func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsByDefaultWithUnsupportedType(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
-	type location struct {
-		city string
-	}
 	type person struct {
-		addresses []location // no support
+		addresses interface{} // no support
 	}
 
 	builder := NewMappingPropertiesBuilder()
@@ -260,14 +257,27 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsByDefaultWithUnsu
 func TestMappingPropertiesBuilder_BuildMappingProperties_DoesNotErrorsWithUnsupportedTypeIfOptionProvided(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
-	type location struct {
-		city string
-	}
 	type person struct {
-		addresses []location // no support
+		addresses interface{} // no support
 	}
 
 	builder := NewMappingPropertiesBuilder(OmitUnsupportedTypes())
 	_, err := builder.BuildMappingProperties(person{})
 	g.Expect(err).To(gomega.BeNil())
+}
+
+func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsSpecificErrorForSlices(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type location struct {
+		city string
+	}
+	type person struct {
+		addresses []location // no need for slices, can just use the object in the mapping and still store arrays
+	}
+
+	builder := NewMappingPropertiesBuilder()
+	_, err := builder.BuildMappingProperties(person{})
+	g.Expect(err).ToNot(gomega.BeNil())
+	g.Expect(err.Error()).To(gomega.ContainSubstring("slices are not supported"))
 }
