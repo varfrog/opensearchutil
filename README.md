@@ -154,7 +154,21 @@ func main() {
 		fmt.Printf("GenerateMappingsJson: %v", err)
 		os.Exit(1)
 	}
-	fmt.Printf("indexJson:\n %s\n", string(indexJson))
+	fmt.Printf("%s\n", string(indexJson))
+}
+```
+
+Output:
+```json
+ {
+   "properties": {
+      "email": {
+         "type": "keyword"
+      },
+      "name": {
+         "type": "text"
+      }
+   }
 }
 ```
 
