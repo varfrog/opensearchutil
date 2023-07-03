@@ -3,6 +3,7 @@
 Utilities for working with OpenSearch.
 
 - **IndexGenerator**: given an object, makes an OpenSearch index template,
+- **MappingPropertiesBuilder and generation of index mappings**: given an object, makes an OpenSearch index mapping,
 - **Field types**: go types for struct fields that:
   - when the struct is marshalled into JSON, the fields get marshalled into valid OpenSearch types,
   - when generating an index mapping JSON, the fields get assigned the appropriate OpenSearch type and format.
@@ -120,8 +121,44 @@ Output:
 
 The resulting JSON contents is then used in a request to the [Create index API request](https://opensearch.org/docs/1.0/opensearch/rest-api/create-index/). Also specify "settings" and "aliases" that suit your needs.
 
+## MappingPropertiesBuilder
 
-## Field types
+`MappingPropertiesBuilder` takes in an object and generates an index mapping for it.
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/varfrog/opensearchutil"
+	"os"
+)
+
+func main() {
+	type person struct {
+		Name  string
+		Email string `opensearch:"type:keyword"`
+	}
+
+	mappingPropertiesBuilder := opensearchutil.NewMappingPropertiesBuilder()
+	generator := opensearchutil.NewIndexGenerator()
+
+	mappingProperties, err := mappingPropertiesBuilder.BuildMappingProperties(person{})
+	if err != nil {
+		fmt.Printf("BuildMappingProperties: %v", err)
+		os.Exit(1)
+	}
+
+	indexJson, err := generator.GenerateMappingsJson(mappingProperties)
+	if err != nil {
+		fmt.Printf("GenerateMappingsJson: %v", err)
+		os.Exit(1)
+	}
+	fmt.Printf("indexJson:\n %s\n", string(indexJson))
+}
+```
+
+## Field Types
 
 ```go
 package main
@@ -200,5 +237,22 @@ Document body:
   "date_a": "20230223",
   "date_b": "20230223T224633+02:00",
   "date_c": "20230223T224633.808+02:00"
+}
+```
+
+## Best Practice
+
+I recommend using **separate structs for generating index mappings and indexing documents**. This allows to address the issue of storing an array of some value. For example, if a User has multiple Address objects, in code we need to have a slice of these, i.e. `[]Address`. But in the mapping we need only to define a mapping of the `object` itself, not of its array, so in the mapping it's just `Address`.
+
+For example,
+```go
+// UserIndexMapping is used to generate index mappings.
+type UserIndexMapping struct {
+	HomeAddresses Address // No slice
+}
+
+// User is used to index documents and to unmarshal into this struct when retrieving them.
+type User struct {
+    HomeAddresses []Address // Slice
 }
 ```
