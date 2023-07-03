@@ -99,8 +99,12 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 				FieldFormat: fieldFormat,
 			})
 			continue
-		} else {
-			return nil, fmt.Errorf("field not supported: %s", resolvedField.field.Name)
+		} else if !b.optionContainer.omitUnsupportedTypes {
+			return nil, fmt.Errorf(
+				"field not supported: %s %s, please use opensearchutil.OmitUnsupportedTypes to skip"+
+					" fields of unsupported types",
+				resolvedField.field.Name,
+				resolvedField.field.Type.Name())
 		}
 	}
 	return mappingProperties, nil

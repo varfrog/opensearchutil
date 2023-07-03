@@ -241,7 +241,7 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_SetsAnalyzer(t *testing
 	g.Expect(*mps[0].Analyzer).To(gomega.Equal("keyword"))
 }
 
-func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsWithUnsupportedType(t *testing.T) {
+func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsByDefaultWithUnsupportedType(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	type location struct {
@@ -255,4 +255,19 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsWithUnsupportedTy
 	_, err := builder.BuildMappingProperties(person{})
 	g.Expect(err).ToNot(gomega.BeNil())
 	g.Expect(err.Error()).To(gomega.ContainSubstring("field not supported"))
+}
+
+func TestMappingPropertiesBuilder_BuildMappingProperties_DoesNotErrorsWithUnsupportedTypeIfOptionProvided(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type location struct {
+		city string
+	}
+	type person struct {
+		addresses []location // no support
+	}
+
+	builder := NewMappingPropertiesBuilder(OmitUnsupportedTypes())
+	_, err := builder.BuildMappingProperties(person{})
+	g.Expect(err).To(gomega.BeNil())
 }

@@ -6,12 +6,12 @@ type MappingPropertiesBuilderOption interface {
 
 type mappingPropertiesBuilderOptionContainer struct {
 	maxDepth             uint8
+	omitUnsupportedTypes bool
 	fieldNameTransformer FieldNameTransformer
 	jsonFormatter        JsonFormatter
 }
 
 // MaxDepth option
-
 type maxDepthOption uint8
 
 func (c maxDepthOption) apply(opts *mappingPropertiesBuilderOptionContainer) {
@@ -23,7 +23,6 @@ func WithMaxDepth(maxDepth uint8) MappingPropertiesBuilderOption {
 }
 
 // FieldNameTransformer option
-
 type fieldNameTransformerOption struct {
 	fieldNameTransformer FieldNameTransformer
 }
@@ -35,4 +34,17 @@ func (c fieldNameTransformerOption) apply(opts *mappingPropertiesBuilderOptionCo
 //goland:noinspection GoUnusedExportedFunction
 func WithFieldNameTransformer(fieldNameTransformer FieldNameTransformer) MappingPropertiesBuilderOption {
 	return fieldNameTransformerOption{fieldNameTransformer: fieldNameTransformer}
+}
+
+// MaxDepth option
+type skipUnsupportedTypesOption bool
+
+func (c skipUnsupportedTypesOption) apply(opts *mappingPropertiesBuilderOptionContainer) {
+	opts.omitUnsupportedTypes = bool(c)
+}
+
+// OmitUnsupportedTypes makes the builder not complain about types it cannot support. Those would then need to be
+// generated manually.
+func OmitUnsupportedTypes() MappingPropertiesBuilderOption {
+	return skipUnsupportedTypesOption(true)
 }
