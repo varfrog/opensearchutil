@@ -163,18 +163,9 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_DoesNotExceedDefaultMax
 	builder := NewMappingPropertiesBuilder()
 	mps, err := builder.BuildMappingProperties(location{})
 	g.Expect(err).To(gomega.BeNil())
-	g.Expect(mps).To(gomega.Equal(
-		[]MappingProperty{ // Depth Level 1
-			{FieldName: "name", FieldType: "text"},
-			{
-				FieldName: "loc",
-				Children: []MappingProperty{ // Depth level 2
-					// No field for "loc", as MaxDepth is reached
-					{FieldName: "name", FieldType: "text"},
-				},
-			},
-		},
-	))
+	for _, mp := range mps {
+		g.Expect(mp.GetDepth() <= DefaultMaxDepth).To(gomega.BeTrue())
+	}
 }
 
 func TestMappingPropertiesBuilder_BuildMappingProperties_DoesNotExceedGivenMaxDepthWithRecursiveField(t *testing.T) {
@@ -185,7 +176,9 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_DoesNotExceedGivenMaxDe
 		loc  *location
 	}
 
-	builder := NewMappingPropertiesBuilder(WithMaxDepth(3))
+	const depth = 3
+
+	builder := NewMappingPropertiesBuilder(WithMaxDepth(depth))
 
 	expectedMappingProperties := []MappingProperty{ // Level 1
 		{FieldName: "name", FieldType: "text"},
@@ -206,6 +199,9 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_DoesNotExceedGivenMaxDe
 	mps, err := builder.BuildMappingProperties(location{})
 	g.Expect(err).To(gomega.BeNil())
 	g.Expect(mps).To(gomega.Equal(expectedMappingProperties))
+	for _, mp := range mps {
+		g.Expect(mp.GetDepth() <= depth).To(gomega.BeTrue())
+	}
 }
 
 func TestMappingPropertiesBuilder_BuildMappingProperties_SetsCustomProps(t *testing.T) {

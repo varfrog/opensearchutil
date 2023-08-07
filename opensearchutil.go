@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	DefaultMaxDepth = 2
+	DefaultMaxDepth = 10
 
 	tagKey                 = "opensearch"
 	tagOptionType          = "type"
@@ -69,4 +69,19 @@ type JsonFormatter interface {
 
 type FieldNameTransformer interface {
 	TransformFieldName(name string) (string, error)
+}
+
+func (p MappingProperty) GetDepth() int {
+	return getDepth(p)
+}
+
+func getDepth(property MappingProperty) int {
+	depth := 1
+	for _, child := range property.Children {
+		childDepth := getDepth(child) + 1
+		if childDepth > depth {
+			depth = childDepth
+		}
+	}
+	return depth
 }
