@@ -262,18 +262,75 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_DoesNotErrorWithUnsuppo
 	g.Expect(err).To(gomega.BeNil())
 }
 
-func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsSpecificErrorForSlices(t *testing.T) {
+func TestMappingPropertiesBuilder_BuildMappingProperties_SupportsObjectSlices(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	type location struct {
 		city string
 	}
 	type person struct {
-		addresses []location // no need for slices, can just use the object in the mapping and still store arrays
+		addresses []location
 	}
 
 	builder := NewMappingPropertiesBuilder()
-	_, err := builder.BuildMappingProperties(person{})
-	g.Expect(err).ToNot(gomega.BeNil())
-	g.Expect(err.Error()).To(gomega.ContainSubstring("slices are not supported"))
+	mps, err := builder.BuildMappingProperties(person{})
+	g.Expect(err).ToNot(gomega.HaveOccurred())
+	g.Expect(mps).To(gomega.HaveLen(1))
+	g.Expect(mps[0]).To(gomega.Equal(MappingProperty{
+		FieldName: "addresses",
+		Children: []MappingProperty{
+			{
+				FieldName: "city",
+				FieldType: "text",
+			},
+		},
+	}))
+}
+
+func TestMappingPropertiesBuilder_BuildMappingProperties_SupportsPrimitiveSlices(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type person struct {
+		names []string
+	}
+
+	builder := NewMappingPropertiesBuilder()
+	mps, err := builder.BuildMappingProperties(person{})
+	g.Expect(err).ToNot(gomega.HaveOccurred())
+	g.Expect(mps).To(gomega.HaveLen(1))
+	g.Expect(mps[0]).To(gomega.Equal(MappingProperty{
+		FieldName: "names",
+		FieldType: "text",
+	}))
+}
+
+func TestMappingPropertiesBuilder_BuildMappingProperties_SliceRecursiveMaxDepth(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type person struct {
+		siblings []person
+	}
+
+	const depth = 3
+
+	builder := NewMappingPropertiesBuilder(WithMaxDepth(depth))
+
+	expectedMappingProperties := []MappingProperty{ // Level 1
+		{
+			FieldName: "siblings",
+			Children: []MappingProperty{ // Level 2
+				{
+					FieldName: "siblings",
+					Children:  nil, // Level 3, nothing to map, recursion stopped
+				},
+			},
+		},
+	}
+
+	mps, err := builder.BuildMappingProperties(person{})
+	g.Expect(err).ToNot(gomega.HaveOccurred())
+	g.Expect(mps).To(gomega.Equal(expectedMappingProperties))
+	for _, mp := range mps {
+		g.Expect(mp.GetDepth() <= depth).To(gomega.BeTrue())
+	}
 }

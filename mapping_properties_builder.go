@@ -54,6 +54,7 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 		tField := t.Field(i)
 		fieldName := tField.Name
 		resolvedField := b.resolveField(tField, v.Field(i))
+		resolvedField = b.unslice(resolvedField)
 
 		if err := validateField(resolvedField); err != nil {
 			return nil, errors.Wrapf(err, "validateField")
@@ -100,13 +101,6 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 			})
 			continue
 		} else if !b.optionContainer.omitUnsupportedTypes {
-			if resolvedField.kind == reflect.Slice {
-				return nil, fmt.Errorf(
-					"slices are not supported (field '%s'), please use just the object and not its slice, you will still "+
-						"be able to index an array of objects in that field",
-					resolvedField.field.Name)
-			}
-
 			return nil, fmt.Errorf(
 				"field not supported: %s, please use opensearchutil.OmitUnsupportedTypes to skip"+
 					" fields of unsupported types",
@@ -116,7 +110,7 @@ func (b *MappingPropertiesBuilder) doBuildMappingProperties(
 	return mappingProperties, nil
 }
 
-func (b *MappingPropertiesBuilder) addProperties(resolvedField fieldWrapper, mappingProperty *MappingProperty) error {
+func (b *MappingPropertiesBuilder) addProperties(resolvedField *fieldWrapper, mappingProperty *MappingProperty) error {
 	indexPrefixes := getTagOptionValue(resolvedField.field, tagKey, tagOptionIndexPrefixes)
 	if indexPrefixes != "" {
 		opts := parseCustomPropertyValue(indexPrefixes)
@@ -134,7 +128,7 @@ func (b *MappingPropertiesBuilder) addProperties(resolvedField fieldWrapper, map
 	return nil
 }
 
-func validateField(field fieldWrapper) error {
+func validateField(field *fieldWrapper) error {
 	if field.kind == reflect.Struct {
 		switch field.value.Interface().(type) {
 		case time.Time:
@@ -144,7 +138,7 @@ func validateField(field fieldWrapper) error {
 	return nil
 }
 
-func (b *MappingPropertiesBuilder) resolveFieldType(field fieldWrapper) (string, error) {
+func (b *MappingPropertiesBuilder) resolveFieldType(field *fieldWrapper) (string, error) {
 	fieldTypeOverride := getTagOptionValue(field.field, tagKey, tagOptionType)
 	if fieldTypeOverride != "" {
 		return fieldTypeOverride, nil
@@ -162,7 +156,7 @@ func (b *MappingPropertiesBuilder) resolveFieldType(field fieldWrapper) (string,
 	return "", nil
 }
 
-func (b *MappingPropertiesBuilder) resolveFieldFormat(field fieldWrapper) (*string, error) {
+func (b *MappingPropertiesBuilder) resolveFieldFormat(field *fieldWrapper) (*string, error) {
 	fieldFormatOverride := getTagOptionValue(field.field, tagKey, tagOptionFormat)
 	if fieldFormatOverride != "" {
 		return &fieldFormatOverride, nil
@@ -179,7 +173,7 @@ func (b *MappingPropertiesBuilder) resolveFieldFormat(field fieldWrapper) (*stri
 
 // resolveField returns a wrapper object for the given field. If the field is a pointer, it returns a wrapper
 // for the dereferenced field, since we treat both pointer and value fields the same.
-func (b *MappingPropertiesBuilder) resolveField(structField reflect.StructField, value reflect.Value) fieldWrapper {
+func (b *MappingPropertiesBuilder) resolveField(structField reflect.StructField, value reflect.Value) *fieldWrapper {
 	var kind reflect.Kind
 	var val reflect.Value
 	if structField.Type.Kind() == reflect.Ptr {
@@ -190,11 +184,39 @@ func (b *MappingPropertiesBuilder) resolveField(structField reflect.StructField,
 		val = value
 	}
 
-	return fieldWrapper{
+	return &fieldWrapper{
 		field:       structField,
 		kind:        kind,
 		value:       val,
 		isPrimitive: b.isPrimitive(kind),
+	}
+}
+
+// unslice "un-slices" the field by resolving the underlying element type. I.e. if it's a slice of struct Foo
+// the returned object contains reflection objects for just Foo (not its slice).
+func (b *MappingPropertiesBuilder) unslice(wrapper *fieldWrapper) *fieldWrapper {
+	if wrapper.kind != reflect.Slice {
+		return wrapper
+	}
+
+	elemType := wrapper.field.Type.Elem()
+	var (
+		newKind reflect.Kind
+		newVal  reflect.Value
+	)
+	if elemType.Kind() == reflect.Ptr {
+		newKind = elemType.Elem().Kind()
+		newVal = reflect.New(elemType.Elem()).Elem()
+	} else {
+		newKind = elemType.Kind()
+		newVal = reflect.New(elemType).Elem()
+	}
+
+	return &fieldWrapper{
+		field:       wrapper.field,
+		kind:        newKind,
+		value:       newVal,
+		isPrimitive: b.isPrimitive(newKind),
 	}
 }
 

@@ -27,6 +27,7 @@ func main() {
   }
   type person struct {
     Name           string
+    Aliases        []string
     Email          string `opensearch:"type:keyword"`
     DOB            opensearchutil.TimeBasicDateTimeNoMillis
     Age            uint8
@@ -70,6 +71,9 @@ Output:
       },
       "age": {
         "type": "integer"
+      },
+      "aliases": {
+        "type": "text"
       },
       "dob": {
         "format": "basic_date_time_no_millis",
@@ -129,46 +133,58 @@ The resulting JSON contents is then used in a request to the [Create index API r
 package main
 
 import (
-	"fmt"
-	"github.com/varfrog/opensearchutil"
-	"os"
+  "fmt"
+  "github.com/varfrog/opensearchutil"
+  "os"
 )
 
 func main() {
-	type person struct {
-		Name  string
-		Email string `opensearch:"type:keyword"`
-	}
+  type address struct {
+    streetName string
+  }
 
-	mappingPropertiesBuilder := opensearchutil.NewMappingPropertiesBuilder()
-	generator := opensearchutil.NewIndexGenerator()
+  type person struct {
+    Name      string
+    Email     string `opensearch:"type:keyword"`
+    Addresses []address
+  }
 
-	mappingProperties, err := mappingPropertiesBuilder.BuildMappingProperties(person{})
-	if err != nil {
-		fmt.Printf("BuildMappingProperties: %v", err)
-		os.Exit(1)
-	}
+  mappingPropertiesBuilder := opensearchutil.NewMappingPropertiesBuilder()
+  generator := opensearchutil.NewIndexGenerator()
 
-	indexJson, err := generator.GenerateMappingsJson(mappingProperties)
-	if err != nil {
-		fmt.Printf("GenerateMappingsJson: %v", err)
-		os.Exit(1)
-	}
-	fmt.Printf("%s\n", string(indexJson))
+  mappingProperties, err := mappingPropertiesBuilder.BuildMappingProperties(person{})
+  if err != nil {
+    fmt.Printf("BuildMappingProperties: %v", err)
+    os.Exit(1)
+  }
+
+  indexJson, err := generator.GenerateMappingsJson(mappingProperties)
+  if err != nil {
+    fmt.Printf("GenerateMappingsJson: %v", err)
+    os.Exit(1)
+  }
+  fmt.Printf("%s\n", string(indexJson))
 }
 ```
 
 Output:
 ```json
- {
-   "properties": {
-      "email": {
-         "type": "keyword"
-      },
-      "name": {
-         "type": "text"
+{
+  "properties": {
+    "addresses": {
+      "properties": {
+        "street_name": {
+          "type": "text"
+        }
       }
-   }
+    },
+    "email": {
+      "type": "keyword"
+    },
+    "name": {
+      "type": "text"
+    }
+  }
 }
 ```
 
@@ -251,22 +267,5 @@ Document body:
   "date_a": "20230223",
   "date_b": "20230223T224633+02:00",
   "date_c": "20230223T224633.808+02:00"
-}
-```
-
-## Best Practice
-
-I recommend using **separate structs for generating index mappings and indexing documents**. This allows to address the issue of storing an array of some value. For example, if a User has multiple Address objects, in code we need to have a slice of these, i.e. `[]Address`. But in the mapping we need only to define a mapping of the `object` itself, not of its array, so in the mapping it's just `Address`.
-
-For example,
-```go
-// UserIndexMapping is used to generate index mappings.
-type UserIndexMapping struct {
-	HomeAddresses Address // No slice
-}
-
-// User is used to index documents and to unmarshal into this struct when retrieving them.
-type User struct {
-    HomeAddresses []Address // Slice
 }
 ```
