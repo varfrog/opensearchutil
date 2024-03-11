@@ -250,7 +250,7 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsByDefaultWithUnsu
 	g.Expect(err.Error()).To(gomega.ContainSubstring("field not supported"))
 }
 
-func TestMappingPropertiesBuilder_BuildMappingProperties_DoesNotErrorsWithUnsupportedTypeIfOptionProvided(t *testing.T) {
+func TestMappingPropertiesBuilder_BuildMappingProperties_DoesNotErrorWithUnsupportedTypeIfOptionProvided(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	type person struct {

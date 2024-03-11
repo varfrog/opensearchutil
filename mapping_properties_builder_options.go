@@ -36,7 +36,7 @@ func WithFieldNameTransformer(fieldNameTransformer FieldNameTransformer) Mapping
 	return fieldNameTransformerOption{fieldNameTransformer: fieldNameTransformer}
 }
 
-// MaxDepth option
+// OmitUnsupportedTypes option
 type skipUnsupportedTypesOption bool
 
 func (c skipUnsupportedTypesOption) apply(opts *mappingPropertiesBuilderOptionContainer) {
