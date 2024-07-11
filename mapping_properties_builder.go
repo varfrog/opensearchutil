@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type MappingPropertiesBuilder struct { //
+type MappingPropertiesBuilder struct {
 	optionContainer mappingPropertiesBuilderOptionContainer
 }
 
