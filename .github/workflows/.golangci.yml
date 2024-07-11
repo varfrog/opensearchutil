@@ -1,0 +1,7 @@
+run:
+  go: '1.19'
+
+linters:
+  disable-all: true
+  enable:
+    - gofumpt
