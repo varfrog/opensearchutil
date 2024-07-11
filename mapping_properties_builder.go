@@ -2,12 +2,13 @@ package opensearchutil
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"reflect"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
-type MappingPropertiesBuilder struct { //.
+type MappingPropertiesBuilder struct {
 	optionContainer mappingPropertiesBuilderOptionContainer
 }
 
@@ -257,8 +258,7 @@ func (b *MappingPropertiesBuilder) getDefaultOSTypeFromPrimitiveKind(kind reflec
 		reflect.Uint32,
 		reflect.Uint64:
 		return "integer"
-	case reflect.Float32,
-		reflect.Float64:
+	case reflect.Float32, reflect.Float64:
 		return "float"
 	case reflect.String:
 		return "text"
