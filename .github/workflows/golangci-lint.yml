@@ -13,12 +13,24 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for all branches and tags
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+      - name: Find base branch
+        id: find_base_branch
+        run: |
+          BASE_BRANCH=$(git for-each-ref --format='%(upstream:short)' "$(git symbolic-ref -q HEAD)")
+          if [ -z "$BASE_BRANCH" ]; then
+            echo "BASE_BRANCH=origin/main" >> $GITHUB_ENV  # Default to main if no upstream is set
+          else
+            echo "BASE_BRANCH=$BASE_BRANCH" >> $GITHUB_ENV
+          fi
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.59
-          args: --config .github/workflows/.golangci.yml
+          args: --config .github/workflows/.golangci.yml --new-from-rev ${{ env.BASE_BRANCH }}
