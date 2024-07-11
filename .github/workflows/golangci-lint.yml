@@ -32,4 +32,4 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.59
-          args: --config .github/workflows/.golangci.yml --new-from-rev ${{ env.BASE_BRANCH }}
+          args: --config .github/.golangci.yml --new-from-rev ${{ env.BASE_BRANCH }}
