@@ -22,12 +22,9 @@ jobs:
       - name: Find base branch
         id: find_base_branch
         run: |
-          BASE_BRANCH=$(git for-each-ref --format='%(upstream:short)' "$(git symbolic-ref -q HEAD)")
-          if [ -z "$BASE_BRANCH" ]; then
-            echo "BASE_BRANCH=origin/main" >> $GITHUB_ENV  # Default to main if no upstream is set
-          else
-            echo "BASE_BRANCH=$BASE_BRANCH" >> $GITHUB_ENV
-          fi
+          DEFAULT_BRANCH=$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5)
+          BASE_BRANCH=$(git merge-base --fork-point origin/$DEFAULT_BRANCH HEAD || echo "origin/$DEFAULT_BRANCH")
+          echo "BASE_BRANCH=$BASE_BRANCH" >> $GITHUB_ENV
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
