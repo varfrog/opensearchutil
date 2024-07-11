@@ -15,4 +15,3 @@ issues:
   #
   # Default: false
   new: true
-  new-from-rev: origin/main

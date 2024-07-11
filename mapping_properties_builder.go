@@ -8,7 +8,6 @@ import (
 )
 
 type MappingPropertiesBuilder struct { //
-
 	optionContainer mappingPropertiesBuilderOptionContainer
 }
 
