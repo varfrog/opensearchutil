@@ -1,10 +1,11 @@
 package opensearchutil
 
 import (
-	"github.com/onsi/gomega"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/onsi/gomega"
 )
 
 func Test_MakePtr(t *testing.T) {

@@ -2,6 +2,7 @@ package opensearchutil
 
 import (
 	"encoding/json"
+
 	"github.com/pkg/errors"
 )
 

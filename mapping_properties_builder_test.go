@@ -2,9 +2,10 @@ package opensearchutil
 
 import (
 	"errors"
-	"github.com/onsi/gomega"
 	"testing"
 	"time"
+
+	"github.com/onsi/gomega"
 )
 
 func TestMappingPropertiesBuilder_BuildMappingProperties_PrimitivesAndTheirPtrs(t *testing.T) {

@@ -3,6 +3,7 @@ package opensearchutil
 import (
 	_ "embed"
 	"encoding/json"
+
 	"github.com/pkg/errors"
 )
 
