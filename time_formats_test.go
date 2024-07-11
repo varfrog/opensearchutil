@@ -2,9 +2,10 @@ package opensearchutil
 
 import (
 	"encoding/json"
-	. "github.com/onsi/gomega"
 	"testing"
 	"time"
+
+	. "github.com/onsi/gomega"
 )
 
 func TestTimeBasicDateTime_MarshalText(t *testing.T) {

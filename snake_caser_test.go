@@ -1,8 +1,9 @@
 package opensearchutil
 
 import (
-	"github.com/onsi/gomega"
 	"testing"
+
+	"github.com/onsi/gomega"
 )
 
 func TestSnakeCaser_TransformFieldName(t *testing.T) {

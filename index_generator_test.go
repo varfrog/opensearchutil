@@ -2,9 +2,10 @@ package opensearchutil
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
-	"testing"
 )
 
 func TestIndexGenerator_GenerateIndexJson_buildsATree(t *testing.T) {
