@@ -1,17 +1,16 @@
 package opensearchutil
 
 import (
+	"encoding/json"
 	"time"
 
-	"encoding/json"
-	
+	"github.com/pkg/errors"
 )
 
 const (
 	FormatTimeBasicDateTime         = "20060102T150405.999-07:00"
 	FormatTimeBasicDateTimeNoMillis = "20060102T150405-07:00"
 	FormatTimeBasicDate             = "20060102"
-	FormatTimestamp64               = "epoch_second"
 )
 
 type (
