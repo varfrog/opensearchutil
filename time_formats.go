@@ -4,12 +4,14 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"strconv"
 )
 
 const (
 	FormatTimeBasicDateTime         = "20060102T150405.999-07:00"
 	FormatTimeBasicDateTimeNoMillis = "20060102T150405-07:00"
 	FormatTimeBasicDate             = "20060102"
+	FormatEpochSecond               = "epoch_second"
 )
 
 type (
@@ -21,6 +23,9 @@ type (
 
 	// TimeBasicDate marshalls into OpenSearch basic_date type
 	TimeBasicDate time.Time
+
+	// TimeEpochSecond marshals into OpenSearch epoch_second type
+	TimeEpochSecond time.Time
 )
 
 // OpenSearchDateType tells MappingPropertiesBuilder that a type is a "date" OpenSearch type.
@@ -90,4 +95,27 @@ func (t *TimeBasicDate) UnmarshalText(text []byte) error {
 //goland:noinspection GoMixedReceiverTypes
 func (t TimeBasicDate) GetOpenSearchFieldType() string {
 	return "basic_date"
+}
+
+// TimeEpochSecond
+
+// MarshalText implements the encoding.TextMarshaler interface for TimeEpochSecond.
+func (t TimeEpochSecond) MarshalText() ([]byte, error) {
+	epochSeconds := time.Time(t).Unix()
+	return []byte(strconv.FormatInt(epochSeconds, 10)), nil
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface for TimeEpochSecond.
+func (t *TimeEpochSecond) UnmarshalText(text []byte) error {
+	epochSeconds, err := strconv.ParseInt(string(text), 10, 64)
+	if err != nil {
+		return errors.Wrap(err, "strconv.ParseInt")
+	}
+	*t = TimeEpochSecond(time.Unix(epochSeconds, 0))
+	return nil
+}
+
+// GetOpenSearchFieldType returns the OpenSearch field type for TimeEpochSecond.
+func (t TimeEpochSecond) GetOpenSearchFieldType() string {
+	return FormatEpochSecond
 }
