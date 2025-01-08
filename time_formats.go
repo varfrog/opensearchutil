@@ -132,3 +132,8 @@ func (nt *NumericTime) UnmarshalJSON(data []byte) error {
 func (nt NumericTime) Unix() int64 {
 	return nt.Time.Unix()
 }
+
+// NewTimeNumericTime is a constructor for NumericTime.
+func NewTimeNumericTime(t time.Time) NumericTime {
+	return NumericTime{t}
+}
