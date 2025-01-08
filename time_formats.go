@@ -3,15 +3,15 @@ package opensearchutil
 import (
 	"time"
 
-	"github.com/pkg/errors"
-	"strconv"
+	"encoding/json"
+	
 )
 
 const (
 	FormatTimeBasicDateTime         = "20060102T150405.999-07:00"
 	FormatTimeBasicDateTimeNoMillis = "20060102T150405-07:00"
 	FormatTimeBasicDate             = "20060102"
-	FormatEpochSecond               = "epoch_second"
+	FormatTimestamp64               = "epoch_second"
 )
 
 type (
@@ -24,8 +24,23 @@ type (
 	// TimeBasicDate marshalls into OpenSearch basic_date type
 	TimeBasicDate time.Time
 
-	// TimeEpochSecond marshals into OpenSearch epoch_second type
-	TimeEpochSecond time.Time
+	// NumericTime marshals to and from Unix timestamps (integer "long" values) to make sorting on dates possible.
+	//
+	// OpenSearch supports "date" fields for indexing and querying date-time values. However, using "date" fields for sorting
+	// introduces significant performance and memory challenges because OpenSearch does not natively optimize sorting on "date"
+	// fields. Sorting on "date" fields often requires loading field data into memory, which can lead to increased memory usage,
+	// slower queries, and potential errors.
+	//
+	// To address this, NumericTime represents date-time values as Unix timestamps (in seconds since the epoch) and stores them
+	// as "long" fields in OpenSearch. This approach has several advantages:
+	//   - **Efficient Sorting:** Numeric fields (e.g., "long") are natively optimized for sorting in OpenSearch, avoiding
+	//     the overhead of "date" field sorting.
+	//   - **Compact Storage:** Unix timestamps are smaller and simpler to store compared to string-based date formats.
+	//   - **Compatibility:** Unix timestamps are a widely used and supported standard for representing date-time values.
+	//
+	// This type is designed to work alongside "date" fields when necessary. For example, you can use the "date" field for
+	// full-text queries and range filters, while relying on NumericTime for efficient sorting operations.
+	NumericTime struct{ time.Time }
 )
 
 // OpenSearchDateType tells MappingPropertiesBuilder that a type is a "date" OpenSearch type.
@@ -97,25 +112,24 @@ func (t TimeBasicDate) GetOpenSearchFieldType() string {
 	return "basic_date"
 }
 
-// TimeEpochSecond
+// NumericTime
 
-// MarshalText implements the encoding.TextMarshaler interface for TimeEpochSecond.
-func (t TimeEpochSecond) MarshalText() ([]byte, error) {
-	epochSeconds := time.Time(t).Unix()
-	return []byte(strconv.FormatInt(epochSeconds, 10)), nil
+// MarshalJSON converts NumericTime to a Unix timestamp (seconds) for JSON encoding.
+func (nt NumericTime) MarshalJSON() ([]byte, error) {
+	return json.Marshal(nt.Time.Unix())
 }
 
-// UnmarshalText implements the encoding.TextUnmarshaler interface for TimeEpochSecond.
-func (t *TimeEpochSecond) UnmarshalText(text []byte) error {
-	epochSeconds, err := strconv.ParseInt(string(text), 10, 64)
-	if err != nil {
-		return errors.Wrap(err, "strconv.ParseInt")
+// UnmarshalJSON parses a Unix timestamp (seconds) from JSON and converts it to time.Time.
+func (nt *NumericTime) UnmarshalJSON(data []byte) error {
+	var unixTimestamp int64
+	if err := json.Unmarshal(data, &unixTimestamp); err != nil {
+		return err
 	}
-	*t = TimeEpochSecond(time.Unix(epochSeconds, 0))
+	nt.Time = time.Unix(unixTimestamp, 0).UTC() // Ensure UTC
 	return nil
 }
 
-// GetOpenSearchFieldType returns the OpenSearch field type for TimeEpochSecond.
-func (t TimeEpochSecond) GetOpenSearchFieldType() string {
-	return FormatEpochSecond
+// Unix converts NumericTime to its Unix timestamp representation (seconds).
+func (nt NumericTime) Unix() int64 {
+	return nt.Time.Unix()
 }
