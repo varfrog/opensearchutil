@@ -44,7 +44,7 @@ type (
 
 // OpenSearchDateType tells MappingPropertiesBuilder that a type is a "date" OpenSearch type.
 type OpenSearchDateType interface {
-	GetOpenSearchFieldType() string
+	GetOpenSearchDateFieldType() string
 }
 
 //goland:noinspection GoMixedReceiverTypes
@@ -63,7 +63,7 @@ func (t *TimeBasicDateTime) UnmarshalText(text []byte) error {
 }
 
 //goland:noinspection GoMixedReceiverTypes
-func (t TimeBasicDateTime) GetOpenSearchFieldType() string {
+func (t TimeBasicDateTime) GetOpenSearchDateFieldType() string {
 	return "basic_date_time"
 }
 
@@ -85,7 +85,7 @@ func (t *TimeBasicDateTimeNoMillis) UnmarshalText(text []byte) error {
 }
 
 //goland:noinspection GoMixedReceiverTypes
-func (t TimeBasicDateTimeNoMillis) GetOpenSearchFieldType() string {
+func (t TimeBasicDateTimeNoMillis) GetOpenSearchDateFieldType() string {
 	return "basic_date_time_no_millis"
 }
 
@@ -107,7 +107,7 @@ func (t *TimeBasicDate) UnmarshalText(text []byte) error {
 }
 
 //goland:noinspection GoMixedReceiverTypes
-func (t TimeBasicDate) GetOpenSearchFieldType() string {
+func (t TimeBasicDate) GetOpenSearchDateFieldType() string {
 	return "basic_date"
 }
 
