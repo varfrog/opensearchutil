@@ -8,6 +8,8 @@ Utilities for working with OpenSearch.
   - when the struct is marshalled into JSON, the fields get marshalled into valid OpenSearch types,
   - when generating an index mapping JSON, the fields get assigned the appropriate OpenSearch type and format.
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/varfrog/opensearchutil)
+
 ## IndexGenerator
 
 ```go
