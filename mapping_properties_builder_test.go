@@ -238,6 +238,41 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_SetsAnalyzer(t *testing
 	g.Expect(*mps[0].Analyzer).To(gomega.Equal("keyword"))
 }
 
+func TestMappingPropertiesBuilder_BuildMappingProperties_SetsSearchAnalyzerAndCopyTo(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type doc struct {
+		Title string `opensearch:"type:text,search_analyzer:english,copy_to:all_text,analyzer:standard"`
+		All   string `opensearch:"type:text"`
+	}
+
+	builder := NewMappingPropertiesBuilder()
+	mps, err := builder.BuildMappingProperties(doc{})
+	g.Expect(err).To(gomega.BeNil())
+	g.Expect(mps).To(gomega.HaveLen(2))
+
+	// Find Title and All
+	var title MappingProperty
+	var all MappingProperty
+	for _, mp := range mps {
+		if mp.FieldName == "title" {
+			title = mp
+		}
+		if mp.FieldName == "all" {
+			all = mp
+		}
+	}
+
+	g.Expect(title.FieldType).To(gomega.Equal("text"))
+	g.Expect(title.Analyzer).ToNot(gomega.BeNil())
+	g.Expect(*title.Analyzer).To(gomega.Equal("standard"))
+	g.Expect(title.SearchAnalyzer).ToNot(gomega.BeNil())
+	g.Expect(*title.SearchAnalyzer).To(gomega.Equal("english"))
+	g.Expect(title.CopyTo).To(gomega.Equal([]string{"all_text"}))
+
+	g.Expect(all.FieldType).To(gomega.Equal("text"))
+}
+
 func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsByDefaultWithUnsupportedType(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 

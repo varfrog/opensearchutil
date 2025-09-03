@@ -126,6 +126,16 @@ func (b *MappingPropertiesBuilder) addProperties(resolvedField *fieldWrapper, ma
 		mappingProperty.Analyzer = MakePtr(analyzer)
 	}
 
+	searchAnalyzer := getTagOptionValue(resolvedField.field, tagKey, tagOptionSearchAnalyzer)
+	if searchAnalyzer != "" {
+		mappingProperty.SearchAnalyzer = MakePtr(searchAnalyzer)
+	}
+
+	copyTo := getTagOptionValue(resolvedField.field, tagKey, tagOptionCopyTo)
+	if copyTo != "" {
+		mappingProperty.CopyTo = parseListPropertyValue(copyTo)
+	}
+
 	return nil
 }
 

@@ -7,23 +7,27 @@ import (
 const (
 	DefaultMaxDepth = 10
 
-	tagKey                 = "opensearch"
-	tagOptionType          = "type"
-	tagOptionFormat        = "format"
-	tagOptionAnalyzer      = "analyzer"
-	tagOptionIndexPrefixes = "index_prefixes"
+	tagKey                  = "opensearch"
+	tagOptionType           = "type"
+	tagOptionFormat         = "format"
+	tagOptionAnalyzer       = "analyzer"
+	tagOptionSearchAnalyzer = "search_analyzer"
+	tagOptionCopyTo         = "copy_to"
+	tagOptionIndexPrefixes  = "index_prefixes"
 )
 
 // MappingProperty corresponds to mappings.properties of a mapping JSON.
 // MappingProperty defines either a primitive data type, in which case FieldType != "", or an object, in which case
 // len(Children) > 0.
 type MappingProperty struct {
-	FieldName     string
-	FieldType     string
-	FieldFormat   *string
-	Analyzer      *string
-	IndexPrefixes *map[string]string
-	Children      []MappingProperty
+	FieldName      string
+	FieldType      string
+	FieldFormat    *string
+	Analyzer       *string
+	SearchAnalyzer *string
+	CopyTo         []string
+	IndexPrefixes  *map[string]string
+	Children       []MappingProperty
 }
 
 // IndexSettings allows to specify settings of an index, at its creation. This struct includes both static (those

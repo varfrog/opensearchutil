@@ -232,6 +232,39 @@ func TestIndexGenerator_GenerateIndexJson_addsAnalyzer(t *testing.T) {
 }`))
 }
 
+func TestIndexGenerator_GenerateIndexJson_addsSearchAnalyzerAndCopyTo(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	mappingProperties := []MappingProperty{
+		{
+			FieldName:      "title",
+			FieldType:      "text",
+			Analyzer:       MakePtr("standard"),
+			SearchAnalyzer: MakePtr("english"),
+			CopyTo:         []string{"all_text", "foo_text"},
+		},
+	}
+
+	resultJson, err := NewIndexGenerator().GenerateIndexJson(mappingProperties, nil)
+	g.Expect(err).To(gomega.BeNil())
+
+	g.Expect(string(resultJson)).To(gomega.Equal(`{
+   "mappings": {
+      "properties": {
+         "title": {
+            "analyzer": "standard",
+            "copy_to": [
+               "all_text",
+               "foo_text"
+            ],
+            "search_analyzer": "english",
+            "type": "text"
+         }
+      }
+   }
+}`))
+}
+
 func makeJsonObj(jsonBytes []byte) (map[string]interface{}, error) {
 	var m map[string]interface{}
 	if err := json.Unmarshal(jsonBytes, &m); err != nil {

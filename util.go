@@ -42,3 +42,22 @@ func parseCustomPropertyValue(str string) map[string]string {
 	}
 	return m
 }
+
+// parseListPropertyValue parses a comma-separated list like "a,b,c" into []string{"a","b","c"}.
+func parseListPropertyValue(str string) []string {
+	if strings.TrimSpace(str) == "" {
+		return nil
+	}
+	parts := strings.Split(str, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		v := strings.TrimSpace(p)
+		if v != "" {
+			out = append(out, v)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
