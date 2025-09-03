@@ -273,6 +273,55 @@ func TestMappingPropertiesBuilder_BuildMappingProperties_SetsSearchAnalyzerAndCo
 	g.Expect(all.FieldType).To(gomega.Equal("text"))
 }
 
+func TestMappingPropertiesBuilder_BuildMappingProperties_SetsSearchAnalyzer(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type doc struct {
+		Title string `opensearch:"type:text,search_analyzer:english,analyzer:standard"`
+	}
+
+	builder := NewMappingPropertiesBuilder()
+	mps, err := builder.BuildMappingProperties(doc{})
+	g.Expect(err).To(gomega.BeNil())
+	g.Expect(mps).To(gomega.HaveLen(1))
+
+	var title MappingProperty
+	for _, mp := range mps {
+		if mp.FieldName == "title" {
+			title = mp
+		}
+	}
+
+	g.Expect(title.FieldType).To(gomega.Equal("text"))
+	g.Expect(title.Analyzer).ToNot(gomega.BeNil())
+	g.Expect(*title.Analyzer).To(gomega.Equal("standard"))
+	g.Expect(title.SearchAnalyzer).ToNot(gomega.BeNil())
+	g.Expect(*title.SearchAnalyzer).To(gomega.Equal("english"))
+}
+
+func TestMappingPropertiesBuilder_BuildMappingProperties_SetsCopyTo_CommaSeparated(t *testing.T) {
+	g := gomega.NewGomegaWithT(t)
+
+	type doc struct {
+		Title string `opensearch:"type:text,copy_to:all_test;another_text"`
+	}
+
+	builder := NewMappingPropertiesBuilder()
+	mps, err := builder.BuildMappingProperties(doc{})
+	g.Expect(err).To(gomega.BeNil())
+	g.Expect(mps).To(gomega.HaveLen(1))
+
+	var title MappingProperty
+	for _, mp := range mps {
+		if mp.FieldName == "title" {
+			title = mp
+		}
+	}
+
+	g.Expect(title.FieldType).To(gomega.Equal("text"))
+	g.Expect(title.CopyTo).To(gomega.Equal([]string{"all_test", "another_text"}))
+}
+
 func TestMappingPropertiesBuilder_BuildMappingProperties_ErrorsByDefaultWithUnsupportedType(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 

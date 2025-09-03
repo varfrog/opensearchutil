@@ -10,187 +10,9 @@ Utilities for working with OpenSearch.
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/varfrog/opensearchutil)
 
-## IndexGenerator
+## Complete Example
 
-```go
-package main
-
-import (
-  _ "embed"
-  "fmt"
-  "github.com/varfrog/opensearchutil"
-  "os"
-)
-
-func main() {
-  type location struct {
-    FullAddress string
-    Confirmed   bool
-  }
-  type person struct {
-    Name           string
-    Aliases        []string
-    Email          string `opensearch:"type:keyword"`
-    DOB            opensearchutil.TimeBasicDateTimeNoMillis
-    Age            uint8
-    AccountBalance float64
-    IsDead         bool
-    HomeLoc        location
-    WorkLoc        *location
-    SocialSecurity *string `opensearch:"index_prefixes:min_chars=3;max_chars=5"`
-  }
-
-  builder := opensearchutil.NewMappingPropertiesBuilder()
-  jsonGenerator := opensearchutil.NewIndexGenerator()
-
-  mappingProperties, err := builder.BuildMappingProperties(person{})
-  if err != nil {
-    fmt.Printf("BuildMappingProperties: %v", err)
-    os.Exit(1)
-  }
-
-  indexJson, err := jsonGenerator.GenerateIndexJson(
-    mappingProperties, &opensearchutil.IndexSettings{
-      NumberOfShards: opensearchutil.MakePtr(uint16(1)),
-    },
-    opensearchutil.WithStrictMapping(true))
-  if err != nil {
-    fmt.Printf("GenerateIndexJson: %v", err)
-    os.Exit(1)
-  }
-  fmt.Printf("%s\n", string(indexJson))
-}
-```
-
-Output:
-```json
-{
-  "mappings": {
-    "dynamic": "strict",
-    "properties": {
-      "account_balance": {
-        "type": "float"
-      },
-      "age": {
-        "type": "integer"
-      },
-      "aliases": {
-        "type": "text"
-      },
-      "dob": {
-        "format": "basic_date_time_no_millis",
-        "type": "date"
-      },
-      "email": {
-        "type": "keyword"
-      },
-      "home_loc": {
-        "properties": {
-          "confirmed": {
-            "type": "boolean"
-          },
-          "full_address": {
-            "type": "text"
-          }
-        }
-      },
-      "is_dead": {
-        "type": "boolean"
-      },
-      "name": {
-        "type": "text"
-      },
-      "social_security": {
-        "index_prefixes": {
-          "max_chars": "5",
-          "min_chars": "3"
-        },
-        "type": "text"
-      },
-      "work_loc": {
-        "properties": {
-          "confirmed": {
-            "type": "boolean"
-          },
-          "full_address": {
-            "type": "text"
-          }
-        }
-      }
-    }
-  },
-  "settings": {
-    "number_of_shards": 1
-  }
-}
-```
-
-The resulting JSON contents is then used in a request to the [Create index API request](https://opensearch.org/docs/1.0/opensearch/rest-api/create-index/). Also specify "settings" and "aliases" that suit your needs.
-
-## MappingPropertiesBuilder
-
-`MappingPropertiesBuilder` takes in an object and generates an index mapping for it.
-
-```go
-package main
-
-import (
-  "fmt"
-  "github.com/varfrog/opensearchutil"
-  "os"
-)
-
-func main() {
-  type address struct {
-    streetName string
-  }
-
-  type person struct {
-    Name      string
-    Email     string `opensearch:"type:keyword"`
-    Addresses []address
-  }
-
-  mappingPropertiesBuilder := opensearchutil.NewMappingPropertiesBuilder()
-  generator := opensearchutil.NewIndexGenerator()
-
-  mappingProperties, err := mappingPropertiesBuilder.BuildMappingProperties(person{})
-  if err != nil {
-    fmt.Printf("BuildMappingProperties: %v", err)
-    os.Exit(1)
-  }
-
-  indexJson, err := generator.GenerateMappingsJson(mappingProperties)
-  if err != nil {
-    fmt.Printf("GenerateMappingsJson: %v", err)
-    os.Exit(1)
-  }
-  fmt.Printf("%s\n", string(indexJson))
-}
-```
-
-Output:
-```json
-{
-  "properties": {
-    "addresses": {
-      "properties": {
-        "street_name": {
-          "type": "text"
-        }
-      }
-    },
-    "email": {
-      "type": "keyword"
-    },
-    "name": {
-      "type": "text"
-    }
-  }
-}
-```
-
-## Field Types
+This example demonstrates all features of OpenSearchUtil in a single runnable program:
 
 ```go
 package main
@@ -204,70 +26,215 @@ import (
 )
 
 func main() {
-	type dates struct {
-		DateA opensearchutil.TimeBasicDate             `json:"date_a"`
-		DateB opensearchutil.TimeBasicDateTimeNoMillis `json:"date_b"`
-		DateC opensearchutil.TimeBasicDateTime         `json:"date_c"`
+	// Define nested structs to demonstrate object mapping
+	type location struct {
+		FullAddress string
+		Confirmed   bool
 	}
 
-	t := time.Now()
-	d := dates{
-		DateA: opensearchutil.TimeBasicDate(t),
-		DateB: opensearchutil.TimeBasicDateTimeNoMillis(t),
-		DateC: opensearchutil.TimeBasicDateTime(t),
+	// Main struct demonstrating all features
+	type person struct {
+		// Basic types with default mappings
+		Name           string
+		Age            uint8
+		AccountBalance float64
+		IsDead         bool
+		Aliases        []string
+
+		// Custom field type overrides
+		Email          string `opensearch:"type:keyword"`
+		SocialSecurity *string `opensearch:"index_prefixes:min_chars=3;max_chars=5"`
+
+		// Custom date types with proper OpenSearch formats
+		DOB opensearchutil.TimeBasicDateTimeNoMillis
+		CreatedAt opensearchutil.TimeBasicDateTime
+		LastLogin opensearchutil.TimeBasicDate
+
+		// Nested objects (value and pointer)
+		HomeLoc location
+		WorkLoc *location
+
+		// Array of objects
+		Addresses []location
+
+		// Advanced text field features
+		Title     string `opensearch:"type:text,analyzer:standard,search_analyzer:english,copy_to:all_text;searchable_text"`
+		AllText   string `opensearch:"type:text"`
+		SearchableText string `opensearch:"type:text"`
 	}
 
-	// When generating an index mapping JSON, the fields get assigned the approprate OpenSearch type and format
-	//
-	mappingProperties, err := opensearchutil.NewMappingPropertiesBuilder().BuildMappingProperties(d)
-	if err != nil {
-		fmt.Printf("BuildMappingProperties: %v", err)
-		os.Exit(1)
+	// Create sample data
+	now := time.Now()
+	samplePerson := person{
+		Name:           "John Doe",
+		Age:            30,
+		AccountBalance: 1500.75,
+		IsDead:         false,
+		Aliases:        []string{"Johnny", "JD"},
+		Email:          "john@example.com",
+		SocialSecurity: opensearchutil.MakePtr("123-45-6789"),
+		DOB:            opensearchutil.TimeBasicDateTimeNoMillis(now.AddDate(-30, 0, 0)),
+		CreatedAt:      opensearchutil.TimeBasicDateTime(now),
+		LastLogin:      opensearchutil.TimeBasicDate(now),
+		HomeLoc: location{
+			FullAddress: "123 Main St, Anytown, USA",
+			Confirmed:   true,
+		},
+		WorkLoc: &location{
+			FullAddress: "456 Business Ave, Anytown, USA",
+			Confirmed:   true,
+		},
+		Addresses: []location{
+			{FullAddress: "789 Secondary St, Anytown, USA", Confirmed: false},
+		},
+		Title:           "Software Engineer",
+		AllText:         "",
+		SearchableText:  "",
 	}
-	jsonBytes, err := opensearchutil.NewIndexGenerator().GenerateIndexJson(mappingProperties, nil)
-	if err != nil {
-		fmt.Printf("GenerateIndexJson: %v", err)
-		os.Exit(1)
-	}
-	fmt.Printf("Mapping JSON:\n%s\n", string(jsonBytes))
 
-	// When marshalling into JSON, the fields marshall into the approprate formats:
-	//
-	jsonBytes, err = json.MarshalIndent(&d, "", "  ")
+	// 1. Generate mapping properties from struct
+	builder := opensearchutil.NewMappingPropertiesBuilder()
+	mappingProperties, err := builder.BuildMappingProperties(samplePerson)
 	if err != nil {
-		fmt.Printf("json.MarshalIndent: %v", err)
+		fmt.Printf("BuildMappingProperties: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("\nDocument body:\n%s\n", string(jsonBytes))
+
+	// 2. Generate complete index JSON with settings
+	indexGenerator := opensearchutil.NewIndexGenerator()
+	indexJson, err := indexGenerator.GenerateIndexJson(
+		mappingProperties,
+		&opensearchutil.IndexSettings{
+			NumberOfShards:   opensearchutil.MakePtr(uint16(2)),
+			NumberOfReplicas: opensearchutil.MakePtr(uint16(1)),
+		},
+		opensearchutil.WithStrictMapping(true),
+	)
+	if err != nil {
+		fmt.Printf("GenerateIndexJson: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("=== OpenSearch Index JSON ===")
+	fmt.Printf("%s\n\n", string(indexJson))
+
+	// 3. Generate just the mappings JSON
+	mappingsJson, err := indexGenerator.GenerateMappingsJson(mappingProperties)
+	if err != nil {
+		fmt.Printf("GenerateMappingsJson: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("=== Mappings Only ===")
+	fmt.Printf("%s\n\n", string(mappingsJson))
+
+	// 4. Demonstrate JSON marshalling of custom date types
+	documentJson, err := json.MarshalIndent(&samplePerson, "", "  ")
+	if err != nil {
+		fmt.Printf("json.MarshalIndent: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("=== Document JSON (for indexing) ===")
+	fmt.Printf("%s\n", string(documentJson))
 }
 ```
 
-Output:
-```
-Mapping JSON:
+Resulting JSON in the "OpenSearch Index JSON" from the code above (note it's also possible to only get the mappings, to update an existing index):
+```json
 {
    "mappings": {
+      "dynamic": "strict",
       "properties": {
-         "date_a": {
-            "format": "basic_date",
+         "account_balance": {
+            "type": "float"
+         },
+         "addresses": {
+            "properties": {
+               "confirmed": {
+                  "type": "boolean"
+               },
+               "full_address": {
+                  "type": "text"
+               }
+            }
+         },
+         "age": {
+            "type": "integer"
+         },
+         "aliases": {
+            "type": "text"
+         },
+         "all_text": {
+            "type": "text"
+         },
+         "created_at": {
+            "format": "basic_date_time",
             "type": "date"
          },
-         "date_b": {
+         "dob": {
             "format": "basic_date_time_no_millis",
             "type": "date"
          },
-         "date_c": {
-            "format": "basic_date_time",
+         "email": {
+            "type": "keyword"
+         },
+         "home_loc": {
+            "properties": {
+               "confirmed": {
+                  "type": "boolean"
+               },
+               "full_address": {
+                  "type": "text"
+               }
+            }
+         },
+         "is_dead": {
+            "type": "boolean"
+         },
+         "last_login": {
+            "format": "basic_date",
             "type": "date"
+         },
+         "name": {
+            "type": "text"
+         },
+         "searchable_text": {
+            "type": "text"
+         },
+         "social_security": {
+            "index_prefixes": {
+               "max_chars": "5",
+               "min_chars": "3"
+            },
+            "type": "text"
+         },
+         "title": {
+            "analyzer": "standard",
+            "copy_to": [
+               "all_text",
+               "searchable_text"
+            ],
+            "search_analyzer": "english",
+            "type": "text"
+         },
+         "work_loc": {
+            "properties": {
+               "confirmed": {
+                  "type": "boolean"
+               },
+               "full_address": {
+                  "type": "text"
+               }
+            }
          }
       }
+   },
+   "settings": {
+      "number_of_replicas": 1,
+      "number_of_shards": 2
    }
 }
-
-Document body:
-{
-  "date_a": "20230223",
-  "date_b": "20230223T224633+02:00",
-  "date_c": "20230223T224633.808+02:00"
-}
 ```
+
+The resulting JSON can be used directly with the [OpenSearch Create Index API](https://opensearch.org/docs/1.0/opensearch/rest-api/create-index/).

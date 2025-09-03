@@ -15,11 +15,42 @@ func getTagOptionValue(structField reflect.StructField, tagKey string, optionKey
 	const tagOptionSep = ","
 	const keyValSep = ":"
 	if tag := structField.Tag.Get(tagKey); tag != "" {
-		for _, kvs := range strings.Split(tag, tagOptionSep) {
-			kv := strings.Split(kvs, keyValSep)
-			if len(kv) > 1 {
-				if strings.Trim(kv[0], " ") == optionKey {
-					return strings.Join(kv[1:], keyValSep)
+		// Support values that contain semicolons, e.g. copy_to:all_test;another_text
+		segments := strings.Split(tag, tagOptionSep)
+		var (
+			currentKey string
+			currentVal string
+		)
+		done := func() (string, bool) {
+			if strings.TrimSpace(currentKey) == optionKey {
+				return strings.TrimSpace(currentVal), true
+			}
+			return "", false
+		}
+		for i, seg := range segments {
+			seg = strings.TrimSpace(seg)
+			if idx := strings.Index(seg, keyValSep); idx >= 0 {
+				// Start of a new key:value
+				if currentKey != "" {
+					if val, ok := done(); ok {
+						return val
+					}
+				}
+				currentKey = strings.TrimSpace(seg[:idx])
+				currentVal = strings.TrimSpace(seg[idx+1:])
+			} else {
+				// Continuation for previous value
+				if currentKey != "" {
+					if currentVal != "" {
+						currentVal += tagOptionSep
+					}
+					currentVal += seg
+				}
+			}
+			// Final segment: check and return if this was the target key
+			if i == len(segments)-1 {
+				if val, ok := done(); ok {
+					return val
 				}
 			}
 		}
@@ -43,12 +74,12 @@ func parseCustomPropertyValue(str string) map[string]string {
 	return m
 }
 
-// parseListPropertyValue parses a comma-separated list like "a,b,c" into []string{"a","b","c"}.
+// parseListPropertyValue parses a semicolon-separated list like "a;b;c" into []string{"a","b","c"}.
 func parseListPropertyValue(str string) []string {
 	if strings.TrimSpace(str) == "" {
 		return nil
 	}
-	parts := strings.Split(str, ",")
+	parts := strings.Split(str, ";")
 	out := make([]string, 0, len(parts))
 	for _, p := range parts {
 		v := strings.TrimSpace(p)
